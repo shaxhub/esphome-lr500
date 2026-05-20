@@ -23,15 +23,25 @@ crypto at this layer — trust is purely physical.
 
 | Pin | Direction | Notes |
 |---|---|---|
-| VCC | 3.3 V supplied by the main PCB to the WiFi daughterboard | leave disconnected if you replace the module from outside |
+| VCC | **5 V** supplied by the main PCB to the WiFi daughterboard | leave disconnected if you keep the daughterboard in place; otherwise use this to power your replacement (the stock RTL8710BX runs at 3.3 V — there is a local LDO on the daughterboard). |
 | GND | common ground | required |
 | TX (module → PIC) | the module emits heartbeats + WiFi status here | becomes the PIC's RX line |
 | RX (module ← PIC) | the PIC emits its state report here | becomes the PIC's TX line |
 
 To impersonate the module: disconnect the 4-pin header, hook your
 microcontroller's TX/GND to the PIC's RX/GND pads, and your RX to the
-PIC's TX pad. **Do not connect the adapter's VCC** — the dead module's
-regulator and decoupling caps will load it.
+PIC's TX pad.
+
+**UART signal levels:** The 5 V VCC pin powers the original daughterboard,
+which down-regulates to 3.3 V locally — so the VCC pin tells you nothing
+about the UART signal voltage. Measure the PIC's TX pin directly with a
+multimeter while traffic flows; the idle "high" reading is the signal
+voltage. In most observed units it's **3.3 V** (the PIC runs on a 3.3 V
+rail) and you can connect a 3.3 V UART adapter / ESP directly. If you
+measure 5 V, drop the line to 3.3 V with a divider (e.g. 10 kΩ + 20 kΩ)
+or a level shifter on the PIC-TX → ESP-RX direction. The opposite
+direction (ESP-TX → PIC-RX at 3.3 V) is always safe because that exceeds
+the PIC's ~2 V logic-high threshold.
 
 ## Frame format
 

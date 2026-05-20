@@ -59,12 +59,22 @@ header instead:
 
 | ESP8266 (D1 mini) | LR500 "WIFI" header | Notes |
 |---|---|---|
-| `3V3` | `VCC` | source 3.3 V from the device |
+| `5V` | `VCC` | the header supplies **5 V**, not 3.3 V — feed it to the D1 mini's `5V` pin (its onboard regulator makes the 3.3 V the ESP needs). |
 | `GND` | `GND` | required |
 | `D5` (GPIO14, **ESP TX**) | `RX` (PIC's RX line) | the line where the original module's heartbeats appeared |
 | `D6` (GPIO12, **ESP RX**) | `TX` (PIC's TX line) | the line where the PIC's `aa 24 a0 …` state frames originate |
 
-Both sides are 3.3 V logic — no level shifter needed.
+> **Verify the UART signal level before connecting the data lines.** The
+> header's VCC is 5 V, but the stock RTL8710BX is a 3.3 V part, so the
+> daughterboard handles the conversion. The PIC's TX line going into that
+> daughterboard could be either 3.3 V or 5 V depending on the design.
+> Probe the PIC's TX pad with a multimeter while traffic flows — the idle
+> "high" level should read close to the signal voltage.
+> - **~3.3 V** → wire ESP RX directly; you're done.
+> - **~5 V** → put a voltage divider on the PIC-TX → ESP-RX line (e.g.
+>   10 kΩ + 20 kΩ → 3.3 V) or use a level shifter (BSS138, TXS0108E).
+>   ESP-TX → PIC-RX is always fine: 3.3 V comfortably exceeds the PIC's
+>   ~2 V logic-high threshold.
 
 > **Pin direction is easy to flip by accident.** If, on first boot, the
 > entities show stale values (`stale_seconds` climbing), swap `tx_pin` and
