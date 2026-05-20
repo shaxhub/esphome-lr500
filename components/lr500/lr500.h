@@ -66,7 +66,9 @@ class LR500 : public Component, public uart::UARTDevice {
   uint32_t last_hb_ms_{0};
 
   // Cached last-published values so we don't spam HA every second.
-  int last_[16] = {[0 ... 15] = -1};
+  // Indexed by field ID; -1 means "never seen". Sized to cover IDs 0x00..0x1F
+  // which is all the writable / interesting fields we know about.
+  int last_[32];
 };
 
 }  // namespace lr500

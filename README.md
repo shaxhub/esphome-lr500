@@ -45,11 +45,17 @@ All update at ~1 Hz from the device's own state report.
 
 You need:
 
-- A Beurer LR500 you're willing to open. Six screws on the back; the WiFi
-  daughterboard is on the side of the main PCB.
-- An **ESP8266** dev board (Wemos D1 mini is cheapest, ~$3). An ESP32 works
-  too — just change the `esp8266:` block in YAML to `esp32:`.
+- A Beurer LR500 you're willing to open. The WiFi daughterboard is on the
+  side of the main PCB; the main appliance MCU on the verified unit is a
+  Microchip **PIC16F1936** and the WiFi module is a Realtek **RTL8710BX**.
+  Different hardware revisions may exist — if your PCB looks materially
+  different, please [open an issue](../../issues) with photos before
+  proceeding.
+- An **ESP8266** dev board (Wemos D1 mini is cheapest, ~$3). An ESP32 *should*
+  work with the same code (swap the `esp8266:` block in YAML for `esp32:`),
+  but it's currently untested.
 - 4 short jumper wires.
+- A multimeter (just for one signal-level check during install — see below).
 
 ### Wiring
 

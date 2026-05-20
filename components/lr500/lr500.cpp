@@ -32,6 +32,8 @@ static std::vector<uint8_t> make_frame(std::initializer_list<uint8_t> payload) {
 void LR500::setup() {
   ESP_LOGCONFIG(TAG, "Setting up LR500");
 
+  for (auto &v : last_) v = -1;
+
   pm25_sensor = new sensor::Sensor();
   pm25_sensor->set_name("LR500 PM2.5");
   pm25_sensor->set_object_id("lr500_pm25");
@@ -182,10 +184,12 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
       case 0x0D: idx = 13; if (sleep_switch && (int) val != last_[idx]) { sleep_switch->publish_state(val != 0); last_[idx] = val; } break;
       case 0x09: idx = 9;
         if (fan_entity && (int) val != last_[idx]) {
-          auto call = fan_entity->make_call();
-          call.set_state(true);
-          call.set_speed((int) val);
-          call.perform();
+          // Update HA-side state directly — going through
+          // make_call().perform() would re-enter LR500Fan::control() and send
+          // a redundant write back to the PIC.
+          fan_entity->state = true;
+          fan_entity->speed = (int) val;
+          fan_entity->publish_state();
           last_[idx] = val;
         }
         break;
