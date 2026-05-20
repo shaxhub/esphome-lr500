@@ -1,0 +1,47 @@
+esphome:
+  name: lr500
+  friendly_name: LR500
+
+esp8266:
+  board: d1_mini
+
+# Pull the LR500 component from GitHub
+external_components:
+  - source: github://shaxhub/esphome-lr500
+    components: [lr500]
+
+# Disable serial logger output (frees up the boot UART if needed)
+# and switch logging onto OTA / network.
+logger:
+  baud_rate: 0
+
+# Native API for Home Assistant
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "LR500 fallback"
+    password: !secret fallback_password
+captive_portal:
+
+# Software-serial UART on GPIO14 (D5, TX) and GPIO12 (D6, RX).
+uart:
+  id: lr500_uart
+  tx_pin: GPIO14
+  rx_pin: GPIO12
+  baud_rate: 9600
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+  rx_buffer_size: 256
+
+# Our component does all the work — registers all entities at runtime.
+lr500:
+  uart_id: lr500_uart

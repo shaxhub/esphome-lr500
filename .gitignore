@@ -1,0 +1,16 @@
+# ESPHome build artefacts
+.esphome/
+*.bin
+*.elf
+secrets.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
