@@ -60,15 +60,17 @@ You need:
 ### Wiring
 
 The LR500's main board has a 4-pin header labelled **WIFI** that mates with
-the daughterboard. Unplug the daughterboard and wire the ESP into the
-header instead:
+the original WiFi daughterboard. Unplug the daughterboard and wire the ESP
+into the header instead. The `TX`/`RX` labels on the header are from the
+*original module's* perspective, so the names line up directly with the ESP's
+`TX`/`RX` pins:
 
-| ESP8266 (D1 mini) | LR500 "WIFI" header | Notes |
+| ESP8266 (D1 mini) | LR500 "WIFI" header | Function |
 |---|---|---|
-| `5V` | `VCC` | the header supplies **5 V**, not 3.3 V — feed it to the D1 mini's `5V` pin (its onboard regulator makes the 3.3 V the ESP needs). |
-| `GND` | `GND` | required |
-| `D5` (GPIO14, **ESP TX**) | `RX` (PIC's RX line) | the line where the original module's heartbeats appeared |
-| `D6` (GPIO12, **ESP RX**) | `TX` (PIC's TX line) | the line where the PIC's `aa 24 a0 …` state frames originate |
+| `5V` | `VCC` | 5 V supply from the LR500's main board — feed it into the D1 mini's `5V` pin (its onboard regulator drops it to 3.3 V for the ESP). |
+| `GND` | `GND` | common ground |
+| `D5` (GPIO14, **ESP TX**) | `TX` | we send heartbeats + control commands; ends up at the PIC's RX. |
+| `D6` (GPIO12, **ESP RX**) | `RX` | we receive the PIC's `aa 24 a0 …` state reports. |
 
 > **Verify the UART signal level before connecting the data lines.** The
 > header's VCC is 5 V, but the stock RTL8710BX is a 3.3 V part, so the
@@ -82,9 +84,10 @@ header instead:
 >   ESP-TX → PIC-RX is always fine: 3.3 V comfortably exceeds the PIC's
 >   ~2 V logic-high threshold.
 
-> **Pin direction is easy to flip by accident.** If, on first boot, the
-> entities show stale values (`stale_seconds` climbing), swap `tx_pin` and
-> `rx_pin` in the YAML.
+> **If entities show `Unknown` and never update**, you most likely have TX/RX
+> swapped. The ESP will send heartbeats but never receive a state report.
+> Either rewire (`TX → TX`, `RX → RX` matches the silkscreen) or swap
+> `tx_pin` and `rx_pin` in your YAML.
 
 ## Installation
 

@@ -21,16 +21,20 @@ crypto at this layer — trust is purely physical.
 
 ## Wiring (replacing the WiFi module)
 
-| Pin | Direction | Notes |
-|---|---|---|
-| VCC | **5 V** supplied by the main PCB to the WiFi daughterboard | leave disconnected if you keep the daughterboard in place; otherwise use this to power your replacement (the stock RTL8710BX runs at 3.3 V — there is a local LDO on the daughterboard). |
-| GND | common ground | required |
-| TX (module → PIC) | the module emits heartbeats + WiFi status here | becomes the PIC's RX line |
-| RX (module ← PIC) | the PIC emits its state report here | becomes the PIC's TX line |
+The 4-pin header on the main board is labelled from the **original WiFi
+module's** perspective. Names line up directly with your replacement
+microcontroller's pins:
 
-To impersonate the module: disconnect the 4-pin header, hook your
-microcontroller's TX/GND to the PIC's RX/GND pads, and your RX to the
-PIC's TX pad.
+| Header pad | Direction | Notes |
+|---|---|---|
+| `VCC` | **5 V** out to the daughterboard | use this to power your replacement. The stock RTL8710BX runs on 3.3 V because the daughterboard has its own local LDO; a Wemos D1 mini's `5V` pin accepts this directly. |
+| `GND` | common ground | required |
+| `TX` | module → PIC (heartbeats + commands) | connect to your replacement's **TX** pin — you'll be transmitting on this line, ending up at the PIC's RX. |
+| `RX` | PIC → module (state reports) | connect to your replacement's **RX** pin — the PIC's `aa 24 a0 …` state frames arrive here. |
+
+To impersonate the module: disconnect the 4-pin header, then wire
+`TX → TX`, `RX → RX`, `GND → GND`, and use the `VCC` pin to power your
+replacement.
 
 **UART signal levels:** The 5 V VCC pin powers the original daughterboard,
 which down-regulates to 3.3 V locally — so the VCC pin tells you nothing
