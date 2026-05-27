@@ -26,7 +26,6 @@ constexpr uint8_t FRAME_END    = 0xEE;
 constexpr uint8_t OP_STATE     = 0xA0;  // PIC → module
 constexpr uint8_t OP_HEARTBEAT = 0x14;  // module → PIC keepalive
 
-// Field IDs whose value occupies two big-endian bytes. Everything else is 1 byte.
 inline bool is_wide_id(uint8_t f) {
   return f == 0x01 || f == fid::PM25 || f == fid::TEMPERATURE ||
          f == 0x06 || f == 0x20;
@@ -63,19 +62,17 @@ class LR500 : public Component, public uart::UARTDevice {
 
   void send_field(uint8_t field, uint32_t value, uint8_t width);
 
-  sensor::Sensor *pm25_sensor{nullptr};
-  sensor::Sensor *humidity_sensor{nullptr};
-  sensor::Sensor *temperature_sensor{nullptr};
-  LR500Switch *power_switch{nullptr};
-  LR500Switch *uv_switch{nullptr};
-  LR500Switch *sleep_switch{nullptr};
-  LR500Switch *auto_switch{nullptr};
-  LR500Fan *fan_entity{nullptr};
+  // Setters used by codegen (sensor.py / switch.py / fan.py).
+  void set_pm25_sensor(sensor::Sensor *s) { pm25_sensor_ = s; }
+  void set_temperature_sensor(sensor::Sensor *s) { temperature_sensor_ = s; }
+  void set_humidity_sensor(sensor::Sensor *s) { humidity_sensor_ = s; }
+  void set_power_switch(LR500Switch *s) { power_switch_ = s; }
+  void set_uv_switch(LR500Switch *s) { uv_switch_ = s; }
+  void set_sleep_switch(LR500Switch *s) { sleep_switch_ = s; }
+  void set_auto_switch(LR500Switch *s) { auto_switch_ = s; }
+  void set_fan(LR500Fan *f) { fan_entity_ = f; }
 
  protected:
-  // The longest LR500 frame in either direction is 8 bytes (1+1+3+2+1).
-  // RX_BUF_CAP is generous — drops runaway garbage frames started by a stray
-  // 0xAA + huge LEN, while still admitting any legitimate frame.
   static constexpr size_t MAX_FRAME = 8;
   static constexpr size_t RX_BUF_CAP = 64;
 
@@ -88,9 +85,18 @@ class LR500 : public Component, public uart::UARTDevice {
   size_t rx_len_{0};
   uint32_t last_hb_ms_{0};
 
-  // Last raw value published per field ID; -1 == never seen. 1 KB, indexed
-  // directly by the field byte so any future field ID is automatically covered.
   int32_t last_[256];
+
+  // All entities are optional — each is bound only if the user declared a
+  // platform entry for it in YAML.
+  sensor::Sensor *pm25_sensor_{nullptr};
+  sensor::Sensor *temperature_sensor_{nullptr};
+  sensor::Sensor *humidity_sensor_{nullptr};
+  LR500Switch *power_switch_{nullptr};
+  LR500Switch *uv_switch_{nullptr};
+  LR500Switch *sleep_switch_{nullptr};
+  LR500Switch *auto_switch_{nullptr};
+  LR500Fan *fan_entity_{nullptr};
 };
 
 }  // namespace lr500

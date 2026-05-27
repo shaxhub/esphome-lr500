@@ -125,11 +125,33 @@ uart:
   rx_buffer_size: 256
 
 lr500:
+  id: lr500_dev
   uart_id: lr500_uart
+
+sensor:
+  - platform: lr500
+    lr500_id: lr500_dev
+    pm25:        { name: "LR500 PM2.5" }
+    temperature: { name: "LR500 Temperature" }
+    humidity:    { name: "LR500 Humidity" }
+
+switch:
+  - platform: lr500
+    lr500_id: lr500_dev
+    power:     { name: "LR500 Power" }
+    uv:        { name: "LR500 UV" }
+    sleep:     { name: "LR500 Sleep" }
+    auto_mode: { name: "LR500 Auto" }
+
+fan:
+  - platform: lr500
+    lr500_id: lr500_dev
+    name: "LR500 Fan"
 ```
 
-That's the whole user-facing config. All entities are registered by the
-component itself — no per-entity YAML required.
+Any of the `sensor` / `switch` / `fan` entries is optional — omit a sub-key
+to skip that entity entirely. Each one accepts the full set of standard
+ESPHome options (`icon`, `disabled_by_default`, `filters`, etc.).
 
 ## Caveats & known quirks
 

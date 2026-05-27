@@ -1,6 +1,5 @@
 #include "lr500.h"
 #include "esphome/core/log.h"
-#include "esphome/core/application.h"
 
 namespace esphome {
 namespace lr500 {
@@ -13,8 +12,6 @@ static uint16_t sum16(const uint8_t *p, size_t n) {
   return s & 0xFFFF;
 }
 
-// Build a frame in `out` from a payload already laid out in `payload` of length `L`.
-// Returns total frame length. Caller's buffer must hold at least L + 5 bytes.
 static size_t build_frame(uint8_t *out, const uint8_t *payload, uint8_t L) {
   out[0] = FRAME_START;
   out[1] = L;
@@ -28,61 +25,7 @@ static size_t build_frame(uint8_t *out, const uint8_t *payload, uint8_t L) {
 
 void LR500::setup() {
   ESP_LOGCONFIG(TAG, "Setting up LR500");
-
   for (auto &v : last_) v = -1;
-
-  pm25_sensor = new sensor::Sensor();
-  pm25_sensor->set_name("LR500 PM2.5");
-  pm25_sensor->set_object_id("lr500_pm25");
-  pm25_sensor->set_unit_of_measurement("µg/m³");
-  pm25_sensor->set_device_class("pm25");
-  pm25_sensor->set_accuracy_decimals(1);
-  pm25_sensor->set_state_class(sensor::STATE_CLASS_MEASUREMENT);
-  App.register_sensor(pm25_sensor);
-
-  temperature_sensor = new sensor::Sensor();
-  temperature_sensor->set_name("LR500 Temperature");
-  temperature_sensor->set_object_id("lr500_temperature");
-  temperature_sensor->set_unit_of_measurement("°C");
-  temperature_sensor->set_device_class("temperature");
-  temperature_sensor->set_accuracy_decimals(1);
-  temperature_sensor->set_state_class(sensor::STATE_CLASS_MEASUREMENT);
-  App.register_sensor(temperature_sensor);
-
-  humidity_sensor = new sensor::Sensor();
-  humidity_sensor->set_name("LR500 Humidity");
-  humidity_sensor->set_object_id("lr500_humidity");
-  humidity_sensor->set_unit_of_measurement("%");
-  humidity_sensor->set_device_class("humidity");
-  humidity_sensor->set_accuracy_decimals(0);
-  humidity_sensor->set_state_class(sensor::STATE_CLASS_MEASUREMENT);
-  App.register_sensor(humidity_sensor);
-
-  power_switch = new LR500Switch(this, fid::POWER);
-  power_switch->set_name("LR500 Power");
-  power_switch->set_object_id("lr500_power");
-  App.register_switch(power_switch);
-
-  uv_switch = new LR500Switch(this, fid::UV);
-  uv_switch->set_name("LR500 UV");
-  uv_switch->set_object_id("lr500_uv");
-  App.register_switch(uv_switch);
-
-  sleep_switch = new LR500Switch(this, fid::SLEEP);
-  sleep_switch->set_name("LR500 Sleep");
-  sleep_switch->set_object_id("lr500_sleep");
-  App.register_switch(sleep_switch);
-
-  auto_switch = new LR500Switch(this, fid::AUTO_MODE);
-  auto_switch->set_name("LR500 Auto");
-  auto_switch->set_object_id("lr500_auto");
-  App.register_switch(auto_switch);
-
-  fan_entity = new LR500Fan(this);
-  fan_entity->set_name("LR500 Fan");
-  fan_entity->set_object_id("lr500_fan");
-  App.register_fan(fan_entity);
-
   send_heartbeat_();
 }
 
@@ -130,7 +73,6 @@ void LR500::process_byte_(uint8_t b) {
   if (rx_len_ == 0 && b != FRAME_START) return;
 
   if (rx_len_ >= RX_BUF_CAP) {
-    // Runaway frame (bad LEN byte after a stray 0xAA); resync.
     rx_len_ = 0;
     if (b != FRAME_START) return;
   }
@@ -140,13 +82,12 @@ void LR500::process_byte_(uint8_t b) {
   uint8_t L = rx_buf_[1];
   size_t need = 1u + 1u + (size_t) L + 2u + 1u;
   if (need > RX_BUF_CAP) {
-    rx_len_ = 0;  // declared LEN can't fit any legitimate frame
+    rx_len_ = 0;
     return;
   }
   if (rx_len_ < need) return;
 
   if (rx_buf_[need - 1] != FRAME_END) {
-    // Drop one byte and resync to the next 0xAA already in the buffer.
     size_t i = 1;
     while (i < rx_len_ && rx_buf_[i] != FRAME_START) i++;
     rx_len_ = (i < rx_len_) ? rx_len_ - i : 0;
@@ -187,33 +128,33 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
 
     switch (f) {
       case fid::PM25:
-        if (pm25_sensor) pm25_sensor->publish_state(val / 10.0f);
+        if (pm25_sensor_) pm25_sensor_->publish_state(val / 10.0f);
         break;
       case fid::TEMPERATURE:
-        if (temperature_sensor) temperature_sensor->publish_state(val / 256.0f);
+        if (temperature_sensor_) temperature_sensor_->publish_state(val / 256.0f);
         break;
       case fid::HUMIDITY:
-        if (humidity_sensor) humidity_sensor->publish_state((float) val);
+        if (humidity_sensor_) humidity_sensor_->publish_state((float) val);
         break;
       case fid::POWER:
-        if (power_switch) power_switch->publish_state(val != 0);
+        if (power_switch_) power_switch_->publish_state(val != 0);
         break;
       case fid::AUTO_MODE:
-        if (auto_switch) auto_switch->publish_state(val != 0);
+        if (auto_switch_) auto_switch_->publish_state(val != 0);
         break;
       case fid::UV:
-        if (uv_switch) uv_switch->publish_state(val != 0);
+        if (uv_switch_) uv_switch_->publish_state(val != 0);
         break;
       case fid::SLEEP:
-        if (sleep_switch) sleep_switch->publish_state(val != 0);
+        if (sleep_switch_) sleep_switch_->publish_state(val != 0);
         break;
       case fid::FAN_SPEED:
-        if (fan_entity) {
+        if (fan_entity_) {
           // Update HA-side state directly — make_call().perform() would re-enter
           // LR500Fan::control() and bounce the same value back to the PIC.
-          fan_entity->state = true;
-          fan_entity->speed = (int) val;
-          fan_entity->publish_state();
+          fan_entity_->state = true;
+          fan_entity_->speed = (int) val;
+          fan_entity_->publish_state();
         }
         break;
       default:
@@ -224,8 +165,6 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
 
 void LR500Switch::write_state(bool state) {
   parent_->send_field(field_, state ? 1 : 0, 1);
-  // Optimistic publish. If the PIC ignores us (e.g. auto-mode lockout), the
-  // next state report drives the canonical value back through publish_state.
   this->publish_state(state);
 }
 
@@ -237,7 +176,7 @@ void LR500Fan::control(const fan::FanCall &call) {
     parent_->send_field(fid::POWER, want_on ? 1 : 0, 1);
     this->state = want_on;
     dirty = true;
-    if (!want_on) {  // off => done, leave fan speed alone
+    if (!want_on) {
       this->publish_state();
       return;
     }
