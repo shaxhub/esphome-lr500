@@ -68,14 +68,15 @@ All UART traffic in both directions uses the same envelope:
 
 ### Module → PIC
 
-The PIC requires ~1 Hz of traffic from the module side to keep treating it
-as alive. If the module goes silent for too long, the PIC stops accepting
-writes (state reports continue). Any module replacement must keep this
-heartbeat going.
+The stock module sends ~1 Hz of traffic. Recommended to keep doing this in
+any replacement, but it's **not strictly required**: the PIC accepts writes
+indefinitely with a silent neighbour. What the heartbeat actually does is
+*solicit* the PIC's periodic state report — see [Periodic vs. event-driven
+state](#periodic-vs-event-driven-state) below.
 
 | Frame | Meaning |
 |---|---|
-| `aa 03 14 00 00 00 17 ee` | **Idle heartbeat** — sent ~1× per second. Payload is always `14 00 00`. |
+| `aa 03 14 00 00 00 17 ee` | **Idle heartbeat** — sent ~1× per second. Payload is always `14 00 00`. The PIC responds with a full state report. |
 | `aa 03 a4 NN 00 00 …` | **WiFi state notification.** `NN` cycles through `01 02 03 04` as the radio progresses through connection states. |
 | `aa 03 a5 00 00 00 a8 ee` | **WiFi connected.** Tells the PIC the module is on the network. |
 
@@ -105,14 +106,26 @@ aa 02 0b 01 00 0e ee     # UV on
 aa 24 a0 <TLV stream> CKSUM_HI CKSUM_LO ee
 ```
 
-Sent ~1 Hz. The leading payload byte `0xA0` identifies the frame as a state
-report; everything after it is a fixed-order stream of `<field_id> <value(s)>`
-pairs covering the full device state. There is no length byte inside the TLV
-— each field has a known width.
+The leading payload byte `0xA0` identifies the frame as a state report;
+everything after it is a fixed-order stream of `<field_id> <value(s)>` pairs
+covering the full device state. There is no length byte inside the TLV —
+each field has a known width.
 
 The state report is the only feedback channel for writes: the PIC does **not**
 ack individual commands. Confirmation that a write took effect comes from
 seeing the corresponding field change in the next state report.
+
+#### Periodic vs. event-driven state
+
+By default the PIC pushes a state report **for every heartbeat it receives**,
+giving an effective ~1 Hz refresh rate. *Plus* it pushes an unsolicited state
+report whenever a value actually changes (e.g. the user presses a physical
+button, a sensor reading crosses an internal threshold).
+
+If you stop sending heartbeats, the PIC keeps accepting writes normally, but
+its state pushes become purely event-driven — you only hear from it on
+change. That's fine for a controller that doesn't need constant readouts;
+keep heartbeating if you want a heartbeat-rate refresh of the sensor values.
 
 ## Field reference
 
@@ -146,8 +159,9 @@ length byte to recover from a guess.
    ignored. Exit by writing a non-`1` value to field `0x09` (e.g.
    `aa 02 09 02` to switch to manual fan speed 2), or pressing the device's
    physical mode button.
-3. **Heartbeat is mandatory.** If `aa 03 14 00 00 00 17 ee` stops for more than
-   a few seconds, the PIC stops accepting writes.
+3. **Heartbeat is optional but recommended.** The PIC accepts writes
+   indefinitely without it. What it does is solicit a state report — silent
+   neighbour means event-driven state pushes only.
 4. **Auto-flag writes ignore the value byte.** `aa 03 0a XX YY` always triggers
    auto regardless of `XX`/`YY`. The PIC only checks "is this addressing
    field 0x0a?"
