@@ -135,18 +135,18 @@ keep heartbeating if you want a heartbeat-rate refresh of the sensor values.
 
 | ID | Width | Reported meaning | Writable | Notes |
 |----|-------|------------------|----------|-------|
-| 0x01 | 2 B | constant `0x0100` | — | likely protocol/schema version |
+| **0x01** | 2 B | **air quality LED state** | — | Four bands matching the box's colours: `0x0100` = blue (≤ 12 µg/m³), `0x0101` = yellow (12.1–35.4), `0x0102` = orange (35.5–55.4), `0x0103` = red (≥ 55.5). Observed falling-edge transitions are 1–3 µg/m³ below the rising thresholds (small hysteresis to prevent boundary flicker). PM2.5 ≥ 192 µg/m³ still reports `0x0103` — there is no fifth band. |
 | 0x02 | 2 B | PM2.5 × 10 (µg/m³) | — | sensor; e.g. `0x0049 = 73 → 7.3 µg/m³` |
 | 0x03 | 2 B | temperature × 256 (°C) | — | sensor; e.g. `0x1800 → 24.0 °C` |
 | 0x04 | 1 B | humidity % | — | sensor |
-| 0x06 | 2 B | unknown auxiliary sensor | — | TVOC, AQI, or raw particle count? |
-| 0x07 | 1 B | unknown | yes | write causes a buzzer beep but no state change |
+| 0x06 | 2 B | likely **filter life remaining (hours)** | — | Constant `4320` (= 180 days × 24 h, a standard HEPA filter lifetime) across captures with wildly varying PM2.5. Almost certainly not a real-time sensor — needs a multi-day capture to confirm it ticks down at ~24/day. |
+| 0x07 | 1 B | **buzzer trigger** (one-shot) | yes | write of *any* value produces one beep; no persistent state. Likely the PIC's internal "command-received" tone exposed as a field. |
 | **0x08** | 1 B | **power** (`0`/`1`) | yes | |
 | **0x09** | 1 B | **fan speed**: `1`–`4` = speeds, `5` = turbo | yes | reads back as `1` while in auto mode |
 | **0x0A** | 1 B | **auto-mode flag** | yes | writing **any non-zero value** triggers auto |
 | **0x0B** | 1 B | **UV lamp** (`0`/`1`) | yes | |
 | **0x0D** | 1 B | **sleep mode** (`0`/`1`) | yes | |
-| 0x0E | 1 B | unknown | yes | write causes a buzzer beep but no state change |
+| **0x0E** | 1 B | **buzzer / key-tone enable** | yes | only value `1` enables the buzzer; any other value (`0`, `2`, `0xA5`, `0xFF`, …) silences it. State report echoes the literal byte you wrote — so the field is reported but the *behaviour* is binary. |
 | **0x12** | 1 B | **display unit** (`0`=°C, `1`=°F) | yes | |
 | 0x20 | 2 B | unknown (always `0x0000`) | — | |
 | 0x22 | 1 B | unknown (always `0x02`) | — | possibly filter status code |
@@ -169,8 +169,11 @@ length byte to recover from a guess.
 4. **Auto-flag writes ignore the value byte.** `aa 03 0a XX YY` always triggers
    auto regardless of `XX`/`YY`. The PIC only checks "is this addressing
    field 0x0a?"
-5. **Fields 0x07 and 0x0E** beep but produce no visible state change. Possibly
-   bound to internal diagnostics or the buzzer driver.
+5. **Buzzer fields.** `0x07` is a one-shot tone trigger (write any value, hear
+   one beep, no persistent state). `0x0E` is a persistent buzzer enable —
+   value `1` keeps key tones on, anything else silences. `0x0E`'s state
+   report echoes the literal written byte, so a read of `0x0E = 0x02` still
+   means "buzzer off."
 6. **Multi-byte values are big-endian.**
 
 ## Reference Python implementation
