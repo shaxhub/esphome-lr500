@@ -8,18 +8,26 @@ from . import CONF_LR500_ID, LR500, lr500_ns
 DEPENDENCIES = ["lr500"]
 
 LR500Switch = lr500_ns.class_("LR500Switch", switch.Switch)
+LR500MuteSwitch = lr500_ns.class_("LR500MuteSwitch", switch.Switch)
 
 # Each entry: yaml-key -> (C++ setter on LR500, field-id byte)
 TYPES = {
-    "power":     ("set_power_switch", 0x08),
-    "uv":        ("set_uv_switch",    0x0B),
-    "sleep":     ("set_sleep_switch", 0x0D),
-    "auto_mode": ("set_auto_switch",  0x0A),
+    "power":     ("set_power_switch",  0x08),
+    "uv":        ("set_uv_switch",     0x0B),
+    "sleep":     ("set_sleep_switch",  0x0D),
+    "auto_mode": ("set_auto_switch",   0x0A),
+    "buzzer":    ("set_buzzer_switch", 0x0E),
 }
+
+# Mute is a diagnostic switch that gates the component's TX. Toggling ON stops
+# heartbeats and drops any further writes from HA — lets an external probe
+# share the UART line without bus contention.
+MUTE_KEY = "tx_mute"
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_LR500_ID): cv.use_id(LR500),
     **{cv.Optional(key): switch.switch_schema(LR500Switch) for key in TYPES},
+    cv.Optional(MUTE_KEY): switch.switch_schema(LR500MuteSwitch),
 })
 
 
@@ -30,3 +38,7 @@ async def to_code(config):
             continue
         sw = await switch.new_switch(config[key], parent, fid)
         cg.add(getattr(parent, setter)(sw))
+
+    if MUTE_KEY in config:
+        sw = await switch.new_switch(config[MUTE_KEY], parent)
+        cg.add(parent.set_mute_switch(sw))

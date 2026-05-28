@@ -18,6 +18,7 @@ constexpr uint8_t FAN_SPEED   = 0x09;  // 1 B, 1..5
 constexpr uint8_t AUTO_MODE   = 0x0A;  // 1 B bool — any non-zero write enters auto
 constexpr uint8_t UV          = 0x0B;  // 1 B bool
 constexpr uint8_t SLEEP       = 0x0D;  // 1 B bool
+constexpr uint8_t BUZZER      = 0x0E;  // 1 B — only value 1 enables key tones, anything else silences
 constexpr uint8_t UNIT        = 0x12;  // 1 B, 0=°C, 1=°F
 }  // namespace fid
 
@@ -43,6 +44,18 @@ class LR500Switch : public switch_::Switch {
   uint8_t field_;
 };
 
+// Toggling this ON tells the LR500 component to stop transmitting on the
+// shared UART line. Used when an external probe (e.g. a laptop on the same
+// PIC-RX line) needs the bus to itself. RX parsing keeps running.
+class LR500MuteSwitch : public switch_::Switch {
+ public:
+  explicit LR500MuteSwitch(LR500 *parent) : parent_(parent) {}
+  void write_state(bool state) override;
+
+ protected:
+  LR500 *parent_;
+};
+
 class LR500Fan : public fan::Fan {
  public:
   explicit LR500Fan(LR500 *parent) : parent_(parent) {}
@@ -62,6 +75,11 @@ class LR500 : public Component, public uart::UARTDevice {
 
   void send_field(uint8_t field, uint32_t value, uint8_t width);
 
+  // When muted, no heartbeats are sent and writes from HA are dropped. RX
+  // continues so sensors keep updating from whatever the PIC reports.
+  void set_tx_muted(bool m) { tx_muted_ = m; }
+  bool is_tx_muted() const { return tx_muted_; }
+
   // Setters used by codegen (sensor.py / switch.py / fan.py).
   void set_pm25_sensor(sensor::Sensor *s) { pm25_sensor_ = s; }
   void set_temperature_sensor(sensor::Sensor *s) { temperature_sensor_ = s; }
@@ -70,6 +88,8 @@ class LR500 : public Component, public uart::UARTDevice {
   void set_uv_switch(LR500Switch *s) { uv_switch_ = s; }
   void set_sleep_switch(LR500Switch *s) { sleep_switch_ = s; }
   void set_auto_switch(LR500Switch *s) { auto_switch_ = s; }
+  void set_buzzer_switch(LR500Switch *s) { buzzer_switch_ = s; }
+  void set_mute_switch(LR500MuteSwitch *s) { mute_switch_ = s; }
   void set_fan(LR500Fan *f) { fan_entity_ = f; }
 
  protected:
@@ -84,6 +104,7 @@ class LR500 : public Component, public uart::UARTDevice {
   uint8_t rx_buf_[RX_BUF_CAP];
   size_t rx_len_{0};
   uint32_t last_hb_ms_{0};
+  bool tx_muted_{false};
 
   int32_t last_[256];
 
@@ -96,6 +117,8 @@ class LR500 : public Component, public uart::UARTDevice {
   LR500Switch *uv_switch_{nullptr};
   LR500Switch *sleep_switch_{nullptr};
   LR500Switch *auto_switch_{nullptr};
+  LR500Switch *buzzer_switch_{nullptr};
+  LR500MuteSwitch *mute_switch_{nullptr};
   LR500Fan *fan_entity_{nullptr};
 };
 

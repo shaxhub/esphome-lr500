@@ -26,12 +26,12 @@ static size_t build_frame(uint8_t *out, const uint8_t *payload, uint8_t L) {
 void LR500::setup() {
   ESP_LOGCONFIG(TAG, "Setting up LR500");
   for (auto &v : last_) v = -1;
-  send_heartbeat_();
+  if (!tx_muted_) send_heartbeat_();
 }
 
 void LR500::loop() {
   uint32_t now = millis();
-  if (now - last_hb_ms_ >= 1000) {
+  if (!tx_muted_ && now - last_hb_ms_ >= 1000) {
     send_heartbeat_();
     last_hb_ms_ = now;
   }
@@ -47,6 +47,7 @@ void LR500::dump_config() {
 }
 
 void LR500::send_heartbeat_() {
+  if (tx_muted_) return;
   uint8_t payload[3] = {OP_HEARTBEAT, 0x00, 0x00};
   uint8_t buf[MAX_FRAME];
   size_t n = build_frame(buf, payload, sizeof(payload));
@@ -54,6 +55,10 @@ void LR500::send_heartbeat_() {
 }
 
 void LR500::send_field(uint8_t field, uint32_t value, uint8_t width) {
+  if (tx_muted_) {
+    ESP_LOGD(TAG, "muted — dropping write field=0x%02X value=%u", field, value);
+    return;
+  }
   uint8_t payload[3];
   payload[0] = field;
   if (width == 2) {
@@ -148,6 +153,11 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
       case fid::SLEEP:
         if (sleep_switch_) sleep_switch_->publish_state(val != 0);
         break;
+      case fid::BUZZER:
+        // PIC only treats value 1 as "buzzer enabled"; 0, 2, 0xA5, 0xFF
+        // are all silent. State report echoes the literal byte.
+        if (buzzer_switch_) buzzer_switch_->publish_state(val == 1);
+        break;
       case fid::FAN_SPEED:
         if (fan_entity_) {
           // Update HA-side state directly — make_call().perform() would re-enter
@@ -165,6 +175,11 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
 
 void LR500Switch::write_state(bool state) {
   parent_->send_field(field_, state ? 1 : 0, 1);
+  this->publish_state(state);
+}
+
+void LR500MuteSwitch::write_state(bool state) {
+  parent_->set_tx_muted(state);
   this->publish_state(state);
 }
 
