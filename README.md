@@ -28,18 +28,21 @@ See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full protocol writeup.
 
 ## What you get in Home Assistant
 
+Entity IDs are slugified from the `name:` you supply in YAML (the example
+below uses the names shown here). All update at ~1 Hz from the device's
+own state report.
+
 | Entity | Type | Notes |
 |---|---|---|
-| `sensor.lr500_pm25` | sensor | µg/m³, 0.1 precision |
+| `sensor.lr500_pm2_5` | sensor | µg/m³, 0.1 precision (the dot in "PM2.5" slugifies to an underscore) |
 | `sensor.lr500_temperature` | sensor | °C |
 | `sensor.lr500_humidity` | sensor | % |
-| `switch.lr500_power` | switch | full power on/off |
 | `switch.lr500_uv` | switch | UV lamp |
 | `switch.lr500_sleep` | switch | sleep mode |
-| `switch.lr500_auto` | switch | auto mode (writing toggles auto on/off) |
-| `fan.lr500` | fan | 5 speed levels (1–4 = explicit speeds, 5 = turbo); turning the fan off powers the device down |
-
-All update at ~1 Hz from the device's own state report.
+| `switch.lr500_auto` | switch | auto mode — ON enters auto, OFF returns to manual at speed 2 |
+| `switch.lr500_buzzer` | switch | key tones / confirmation beeps |
+| `switch.lr500_uart_mute` | switch | diagnostic — silences UART TX so an external probe can share the bus |
+| `fan.lr500_fan` | fan | 5 speed levels (1–4 = explicit speeds, 5 = turbo); turning the fan off powers the device down — i.e. acts as the master on/off |
 
 ## Hardware
 
@@ -141,10 +144,11 @@ sensor:
 switch:
   - platform: lr500
     lr500_id: lr500_dev
-    power:     { name: "LR500 Power" }
     uv:        { name: "LR500 UV" }
     sleep:     { name: "LR500 Sleep" }
     auto_mode: { name: "LR500 Auto" }
+    buzzer:    { name: "LR500 Buzzer" }
+    tx_mute:   { name: "LR500 UART mute", entity_category: diagnostic }
 
 fan:
   - platform: lr500
@@ -154,7 +158,21 @@ fan:
 
 Any of the `sensor` / `switch` / `fan` entries is optional — omit a sub-key
 to skip that entity entirely. Each one accepts the full set of standard
-ESPHome options (`icon`, `disabled_by_default`, `filters`, etc.).
+ESPHome options (`icon`, `disabled_by_default`, `filters`, etc.) *except*
+`inverted:`, which is blocked on the switches because PIC field semantics
+are fixed.
+
+Note that `power:` is intentionally omitted above — the `fan.lr500_fan`
+entity's own on/off toggle already drives power. Re-add `power: { name: …}`
+to the `switch:` block if you want a separate switch entity (e.g. for an
+automation that needs a non-fan trigger).
+
+## Upgrading from a pre-platform-plugin config
+
+If your YAML used to be just `lr500: { uart_id: … }` (no top-level
+`sensor:` / `switch:` / `fan:` blocks), you'll need to add the platform
+entries from the YAML reference above when upgrading — entities are no
+longer auto-loaded from the bare `lr500:` block.
 
 ## Caveats & known quirks
 
@@ -162,9 +180,10 @@ ESPHome options (`icon`, `disabled_by_default`, `filters`, etc.).
   are silently ignored by the PIC. Toggling `switch.lr500_auto` off (or
   setting an explicit fan speed via `fan.lr500`) leaves auto. This isn't a
   bug in the component — it's the appliance's actual behaviour.
-- **Field 0x06.** There's an auxiliary 2-byte sensor we haven't fully
-  identified — possibly TVOC, an AQI index, or raw particle count. Not
-  currently exposed to HA. Pull requests welcome.
+- **Field 0x06.** Almost certainly filter-life remaining in hours — it
+  sits flat at 4320 (= 180 days × 24 h, a typical HEPA lifetime) across
+  captures with wildly varying PM2.5. Not currently exposed to HA. Pull
+  requests welcome to confirm via multi-day capture.
 - **"Sleep" while powered off.** The PIC reports sleep mode for a few
   seconds after a power-off, then resets it. Don't be alarmed by the flicker.
 - **OTA over the boot UART.** The example YAML sets `logger: baud_rate: 0`
@@ -178,8 +197,8 @@ Issues and PRs welcome — especially:
 
 - Identifying field 0x06 (point a known PM10/TVOC sensor at the same air
   and see if it correlates).
-- Probing the unknown fields (`0x07`, `0x0E`, `0x20`, `0x22`) to see if any
-  of them control anything besides the buzzer.
+- Probing the remaining unknown fields (`0x20`, `0x22`) — `0x07` and `0x0E`
+  are now identified as buzzer trigger and buzzer enable respectively.
 - ESP32 / ESP32-C3 hardware reports.
 
 ## Related files in this repo

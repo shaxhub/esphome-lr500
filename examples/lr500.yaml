@@ -61,6 +61,16 @@ switch:
       name: "LR500 Sleep"
     auto_mode:
       name: "LR500 Auto"
+    buzzer:
+      name: "LR500 Buzzer"
+      icon: "mdi:bell-ring"
+    # Diagnostic: turn ON to silence all UART writes from the ESP. Lets an
+    # external probe share the bus without contention; HA controls are
+    # quietly dropped while this is enabled.
+    tx_mute:
+      name: "LR500 UART mute"
+      icon: "mdi:microphone-off"
+      entity_category: diagnostic
 
 fan:
   - platform: lr500
