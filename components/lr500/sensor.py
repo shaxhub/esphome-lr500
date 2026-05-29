@@ -8,14 +8,13 @@ from esphome.const import (
     DEVICE_CLASS_TEMPERATURE,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
+    UNIT_MICROGRAMS_PER_CUBIC_METER,
     UNIT_PERCENT,
 )
 
 from . import CONF_LR500_ID, LR500
 
 DEPENDENCIES = ["lr500"]
-
-UNIT_MICROGRAMS_PER_CUBIC_METER = "µg/m³"
 
 # Each entry: yaml-key -> (C++ setter, sensor_schema kwargs)
 TYPES = {

@@ -26,8 +26,13 @@ MUTE_KEY = "tx_mute"
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_LR500_ID): cv.use_id(LR500),
-    **{cv.Optional(key): switch.switch_schema(LR500Switch) for key in TYPES},
-    cv.Optional(MUTE_KEY): switch.switch_schema(LR500MuteSwitch),
+    # `block_inverted=True` refuses `inverted: true` on the YAML side.
+    # The PIC's field semantics are physically fixed (POWER=1=on, BUZZER=1=on,
+    # …), so an inverted switch would silently send wrong bytes to the device.
+    **{cv.Optional(key): switch.switch_schema(LR500Switch, block_inverted=True)
+       for key in TYPES},
+    # tx_mute is a diagnostic; inverting it would just be confusing UX.
+    cv.Optional(MUTE_KEY): switch.switch_schema(LR500MuteSwitch, block_inverted=True),
 })
 
 
