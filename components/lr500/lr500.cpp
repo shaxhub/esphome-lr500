@@ -25,8 +25,19 @@ static size_t build_frame(uint8_t *out, const uint8_t *payload, uint8_t L) {
 
 void LR500::setup() {
   ESP_LOGCONFIG(TAG, "Setting up LR500");
-  for (auto &v : last_) v = -1;
-  if (!tx_muted_) send_heartbeat_();
+  // First heartbeat is deferred to loop() so it fires ~1 s after boot,
+  // giving the mute switch's restore mechanism time to settle. Stamping
+  // last_hb_ms_ with the current time means the loop's 1 s gate becomes
+  // an actual 1 s window rather than firing on the very next tick.
+  last_hb_ms_ = millis();
+}
+
+void LR500::set_tx_muted(bool m) {
+  if (tx_muted_ == m) return;
+  tx_muted_ = m;
+  // Republish via the bound switch entity so any programmatic mute toggle
+  // (lambdas, future watchdogs, etc.) shows up in HA.
+  if (mute_switch_) mute_switch_->publish_state(m);
 }
 
 void LR500::loop() {
@@ -87,7 +98,18 @@ void LR500::process_byte_(uint8_t b) {
   uint8_t L = rx_buf_[1];
   size_t need = 1u + 1u + (size_t) L + 2u + 1u;
   if (need > RX_BUF_CAP) {
-    rx_len_ = 0;
+    // Implausible LEN — most commonly a stray 0xAA preceded the real frame
+    // start, so the *second* 0xAA landed in rx_buf_[1] and got read as a
+    // ridiculous length. Resync forward to the next 0xAA so we don't drop
+    // the real frame that's about to arrive.
+    size_t i = 1;
+    while (i < rx_len_ && rx_buf_[i] != FRAME_START) i++;
+    if (i < rx_len_) {
+      rx_len_ -= i;
+      for (size_t j = 0; j < rx_len_; j++) rx_buf_[j] = rx_buf_[i + j];
+    } else {
+      rx_len_ = 0;
+    }
     return;
   }
   if (rx_len_ < need) return;
@@ -114,13 +136,18 @@ void LR500::process_byte_(uint8_t b) {
   rx_len_ = 0;
 }
 
-bool LR500::publish_if_changed_(uint8_t fid, int32_t val) {
-  if (last_[fid] == val) return false;
-  last_[fid] = val;
-  return true;
-}
-
 void LR500::handle_state_(const uint8_t *body, size_t len) {
+  // We publish unconditionally on every state report. The previous design
+  // cached the raw echo byte and short-circuited identical publishes, but
+  // that meant any time the PIC silently ignored a write (auto-mode lockout,
+  // tx_mute window, AUTO_MODE write=0) the corrective echo also matched the
+  // cache and the entity stayed stuck at the optimistic-but-wrong value.
+  // Switch::publish_state and the sensor filter chain already dedupe
+  // efficiently for the no-change case.
+  bool have_power = false, power_on = false;
+  bool have_fan_speed = false;
+  uint32_t fan_speed_val = 0;
+
   size_t i = 0;
   while (i < len) {
     uint8_t f = body[i];
@@ -128,8 +155,6 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
     if (i + 1 + w > len) break;
     uint32_t val = (w == 2) ? (((uint32_t) body[i + 1] << 8) | body[i + 2]) : body[i + 1];
     i += 1 + w;
-
-    if (!publish_if_changed_(f, (int32_t) val)) continue;
 
     switch (f) {
       case fid::PM25:
@@ -142,7 +167,10 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
         if (humidity_sensor_) humidity_sensor_->publish_state((float) val);
         break;
       case fid::POWER:
-        if (power_switch_) power_switch_->publish_state(val != 0);
+        have_power = true;
+        power_on = (val != 0);
+        last_power_ = power_on ? 1 : 0;
+        if (power_switch_) power_switch_->publish_state(power_on);
         break;
       case fid::AUTO_MODE:
         if (auto_switch_) auto_switch_->publish_state(val != 0);
@@ -159,53 +187,85 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
         if (buzzer_switch_) buzzer_switch_->publish_state(val == 1);
         break;
       case fid::FAN_SPEED:
-        if (fan_entity_) {
-          // Update HA-side state directly — make_call().perform() would re-enter
-          // LR500Fan::control() and bounce the same value back to the PIC.
-          fan_entity_->state = true;
-          fan_entity_->speed = (int) val;
-          fan_entity_->publish_state();
-        }
+        have_fan_speed = true;
+        fan_speed_val = val;
         break;
       default:
         break;
     }
   }
+
+  // Fan publish is deferred so it sees both POWER and FAN_SPEED from this
+  // frame regardless of TLV order, and so we never momentarily report
+  // state=true with speed=0 (or fan-on while POWER=0).
+  if (have_fan_speed && fan_entity_) {
+    bool is_on = have_power ? power_on : (last_power_ != 0);
+    fan_entity_->state = is_on;
+    fan_entity_->speed = (int) fan_speed_val;
+    fan_entity_->publish_state();
+  }
 }
 
 void LR500Switch::write_state(bool state) {
-  parent_->send_field(field_, state ? 1 : 0, 1);
+  if (parent_->is_tx_muted()) {
+    // The write would be dropped — don't lie to HA. Republish current state
+    // so the UI snaps back from the user's optimistic toggle.
+    this->publish_state(this->state);
+    return;
+  }
+
+  if (field_ == fid::AUTO_MODE && !state) {
+    // PIC ignores the value byte on writes to 0x0A: aa 02 0a 00 still
+    // triggers auto rather than exiting it. The documented escape (see
+    // docs/PROTOCOL.md "Behavioural notes & quirks" #2) is a non-1 write
+    // to FAN_SPEED. Default to speed 2.
+    parent_->send_field(fid::FAN_SPEED, 2, 1);
+  } else {
+    parent_->send_field(field_, state ? 1 : 0, 1);
+  }
   this->publish_state(state);
 }
 
 void LR500MuteSwitch::write_state(bool state) {
+  // set_tx_muted republishes via mute_switch_, so no extra publish_state
+  // call is needed here — and it short-circuits on no-op flips.
   parent_->set_tx_muted(state);
-  this->publish_state(state);
 }
 
 void LR500Fan::control(const fan::FanCall &call) {
-  bool dirty = false;
-
-  if (call.get_state().has_value()) {
-    bool want_on = *call.get_state();
-    parent_->send_field(fid::POWER, want_on ? 1 : 0, 1);
-    this->state = want_on;
-    dirty = true;
-    if (!want_on) {
-      this->publish_state();
-      return;
-    }
+  if (parent_->is_tx_muted()) {
+    // Snap HA back to the actual state; the write would be a no-op.
+    this->publish_state();
+    return;
   }
+
+  bool want_state = this->state;
+  // Use 3 as a fallback when speed is uninitialized (boot before first
+  // FAN_SPEED echo). Without this, a state=true call with no speed would
+  // publish "on at speed 0".
+  int want_speed = this->speed > 0 ? this->speed : 3;
+
+  if (call.get_state().has_value()) want_state = *call.get_state();
   if (call.get_speed().has_value()) {
     int s = *call.get_speed();
     if (s < 1) s = 1;
     if (s > 5) s = 5;
-    parent_->send_field(fid::FAN_SPEED, (uint8_t) s, 1);
-    this->speed = s;
-    dirty = true;
+    want_speed = s;
+    // Setting a speed without an explicit state implies "turn on at this
+    // speed" — matches the percentage-slider UX in HA.
+    if (!call.get_state().has_value()) want_state = true;
   }
 
-  if (dirty) this->publish_state();
+  if (want_state) {
+    parent_->send_field(fid::POWER, 1, 1);
+    parent_->send_field(fid::FAN_SPEED, (uint8_t) want_speed, 1);
+  } else {
+    parent_->send_field(fid::POWER, 0, 1);
+  }
+
+  this->state = want_state;
+  this->speed = want_speed;
+  this->publish_state();
 }
 
 }  // namespace lr500

@@ -76,8 +76,10 @@ class LR500 : public Component, public uart::UARTDevice {
   void send_field(uint8_t field, uint32_t value, uint8_t width);
 
   // When muted, no heartbeats are sent and writes from HA are dropped. RX
-  // continues so sensors keep updating from whatever the PIC reports.
-  void set_tx_muted(bool m) { tx_muted_ = m; }
+  // continues so sensors keep updating from whatever the PIC reports. The
+  // mute switch entity (if bound) is republished whenever this flag flips,
+  // so anyone calling this programmatically stays in sync with HA.
+  void set_tx_muted(bool m);
   bool is_tx_muted() const { return tx_muted_; }
 
   // Setters used by codegen (sensor.py / switch.py / fan.py).
@@ -99,14 +101,16 @@ class LR500 : public Component, public uart::UARTDevice {
   void send_heartbeat_();
   void process_byte_(uint8_t b);
   void handle_state_(const uint8_t *body, size_t len);
-  bool publish_if_changed_(uint8_t fid, int32_t val);
 
   uint8_t rx_buf_[RX_BUF_CAP];
   size_t rx_len_{0};
   uint32_t last_hb_ms_{0};
   bool tx_muted_{false};
 
-  int32_t last_[256];
+  // Last seen POWER value: -1 = never observed, 0 = off, 1 = on. Used to
+  // gate fan_entity_ state so a FAN_SPEED echo while POWER=0 doesn't make
+  // the fan entity report ON.
+  int last_power_{-1};
 
   // All entities are optional — each is bound only if the user declared a
   // platform entry for it in YAML.
