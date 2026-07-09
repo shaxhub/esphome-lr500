@@ -63,8 +63,8 @@ You need:
 ### Wiring
 
 The LR500's main board has a 4-pin header labelled **WIFI** that mates with
-the original WiFi daughterboard. Unplug the daughterboard and wire the ESP
-into the header instead. The `TX`/`RX` labels on the header are from the
+the daughterboard via a cable. Unplug the cable and wire the ESP into the
+header instead. The `TX`/`RX` labels on the header are from the
 *original module's* perspective, so the names line up directly with the ESP's
 `TX`/`RX` pins:
 
@@ -195,8 +195,7 @@ longer auto-loaded from the bare `lr500:` block.
 
 Issues and PRs welcome — especially:
 
-- Identifying field 0x06 (point a known PM10/TVOC sensor at the same air
-  and see if it correlates).
+- Confirming field 0x06 is filter life (requires tracking it over several days of operation).
 - Probing the remaining unknown fields (`0x20`, `0x22`) — `0x07` and `0x0E`
   are now identified as buzzer trigger and buzzer enable respectively.
 - ESP32 / ESP32-C3 hardware reports.
