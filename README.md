@@ -60,7 +60,7 @@ You need:
 ### Wiring
 
 The LR500's main board has a 4-pin header labelled **WIFI** that mates with
-the daughterboard. Unplug the daughterboard and wire the ESP into the
+the daughterboard via a cable. Unplug the cable and wire the ESP into the
 header instead:
 
 | ESP8266 (D1 mini) | LR500 "WIFI" header | Notes |
@@ -138,8 +138,8 @@ component itself — no per-entity YAML required.
   setting an explicit fan speed via `fan.lr500`) leaves auto. This isn't a
   bug in the component — it's the appliance's actual behaviour.
 - **Field 0x06.** There's an auxiliary 2-byte sensor we haven't fully
-  identified — possibly TVOC, an AQI index, or raw particle count. Not
-  currently exposed to HA. Pull requests welcome.
+  identified, maybe filter life left? Not currently exposed to HA. Pull 
+  requests welcome.
 - **"Sleep" while powered off.** The PIC reports sleep mode for a few
   seconds after a power-off, then resets it. Don't be alarmed by the flicker.
 - **OTA over the boot UART.** The example YAML sets `logger: baud_rate: 0`
@@ -151,8 +151,7 @@ component itself — no per-entity YAML required.
 
 Issues and PRs welcome — especially:
 
-- Identifying field 0x06 (point a known PM10/TVOC sensor at the same air
-  and see if it correlates).
+- Identifying field 0x06.
 - Probing the unknown fields (`0x07`, `0x0E`, `0x20`, `0x22`) to see if any
   of them control anything besides the buzzer.
 - ESP32 / ESP32-C3 hardware reports.
