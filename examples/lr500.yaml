@@ -49,8 +49,8 @@ sensor:
       name: "LR500 Temperature"
     humidity:
       name: "LR500 Humidity"
-    # Field 0x06 — likely HEPA filter life remaining. Reads a constant 4320 h
-    # (180 days) in captures so far; tick-down is unconfirmed. Read-only.
+    # Field 0x06 — HEPA filter life remaining (hours). Full = 4320 h (180
+    # days); counts down with use, resets to 4320 on filter reset. Read-only.
     filter_hours:
       name: "LR500 Filter life remaining"
       icon: "mdi:air-filter"

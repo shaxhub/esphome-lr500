@@ -38,8 +38,8 @@ TYPES = {
         device_class=DEVICE_CLASS_HUMIDITY,
         state_class=STATE_CLASS_MEASUREMENT,
     )),
-    # Field 0x06 — reads a constant 4320 h (180 days) in captures so far; its
-    # tick-down behaviour is unconfirmed. Exposed read-only as an hours count.
+    # Field 0x06 — HEPA filter life remaining, in hours. Full = 4320 h
+    # (180 days); counts down with use and resets to 4320 on filter reset.
     "filter_hours": ("set_filter_hours_sensor", dict(
         unit_of_measurement=UNIT_HOUR,
         accuracy_decimals=0,

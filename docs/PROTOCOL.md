@@ -139,7 +139,7 @@ keep heartbeating if you want a heartbeat-rate refresh of the sensor values.
 | 0x02 | 2 B | PM2.5 × 10 (µg/m³) | — | sensor; e.g. `0x0049 = 73 → 7.3 µg/m³` |
 | 0x03 | 2 B | temperature × 256 (°C) | — | sensor; e.g. `0x1800 → 24.0 °C` |
 | 0x04 | 1 B | humidity % | — | sensor |
-| 0x06 | 2 B | likely **filter life remaining (hours)** | — | Constant `4320` (= 180 days × 24 h, a standard HEPA filter lifetime) across captures with wildly varying PM2.5. Almost certainly not a real-time sensor — needs a multi-day capture to confirm it ticks down at ~24/day. |
+| 0x06 | 2 B | **filter life remaining (hours)** | — | Full value `4320` (= 180 days × 24 h, a standard HEPA filter lifetime). Confirmed a live countdown, not a constant: a partly-used unit read `3342` and resetting the filter jumped it straight back to `4320`. Ticks down toward 0 as the filter is used. The 0x06 value itself is read-only; the *reset* is a separate write (the app's `filterReset` function) whose UART field ID is **not yet identified** — see quirk #7. |
 | 0x07 | 1 B | **buzzer trigger** (one-shot) | yes | write of *any* value produces one beep; no persistent state. Likely the PIC's internal "command-received" tone exposed as a field. |
 | **0x08** | 1 B | **power** (`0`/`1`) | yes | |
 | **0x09** | 1 B | **fan speed**: `1`–`4` = speeds, `5` = turbo | yes | reads back as `1` while in auto mode |
@@ -175,6 +175,15 @@ length byte to recover from a guess.
    report echoes the literal written byte, so a read of `0x0E = 0x02` still
    means "buzzer off."
 6. **Multi-byte values are big-endian.**
+7. **Filter reset is an unidentified write.** Field `0x06` (filter life
+   remaining) is confirmed resettable — resetting the filter snaps it back to
+   `4320`. The FreshHome app exposes this as a `filterReset` cloud function,
+   but which UART field write the stock module translated that into is not yet
+   known. It is **not** any of the identified writable fields
+   (`0x08/09/0A/0B/0D/0E/0x12`), so none of the writes this component sends can
+   trigger it. A likely candidate is one of the unprobed IDs in
+   `scripts/lr500_probe_fields.py`; probe with care, since a stray write could
+   zero or reset the filter counter.
 
 ## Reference Python implementation
 
