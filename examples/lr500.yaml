@@ -49,6 +49,11 @@ sensor:
       name: "LR500 Temperature"
     humidity:
       name: "LR500 Humidity"
+    # Field 0x06 — likely HEPA filter life remaining. Reads a constant 4320 h
+    # (180 days) in captures so far; tick-down is unconfirmed. Read-only.
+    filter_hours:
+      name: "LR500 Filter life remaining"
+      icon: "mdi:air-filter"
 
 switch:
   - platform: lr500
@@ -64,6 +69,10 @@ switch:
     buzzer:
       name: "LR500 Buzzer"
       icon: "mdi:bell-ring"
+    # Display unit: ON = °F, OFF = °C (field 0x12).
+    fahrenheit:
+      name: "LR500 Fahrenheit"
+      icon: "mdi:temperature-fahrenheit"
     # Diagnostic: turn ON to silence all UART writes from the ESP. Lets an
     # external probe share the bus without contention; HA controls are
     # quietly dropped while this is enabled.

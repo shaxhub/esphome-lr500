@@ -13,6 +13,7 @@ namespace fid {
 constexpr uint8_t PM25        = 0x02;  // 2 B, raw / 10 = µg/m³
 constexpr uint8_t TEMPERATURE = 0x03;  // 2 B, raw / 256 = °C
 constexpr uint8_t HUMIDITY    = 0x04;  // 1 B, %
+constexpr uint8_t FILTER_HOURS = 0x06; // 2 B, filter life remaining (hours)
 constexpr uint8_t POWER       = 0x08;  // 1 B bool
 constexpr uint8_t FAN_SPEED   = 0x09;  // 1 B, 1..5
 constexpr uint8_t AUTO_MODE   = 0x0A;  // 1 B bool — any non-zero write enters auto
@@ -86,11 +87,13 @@ class LR500 : public Component, public uart::UARTDevice {
   void set_pm25_sensor(sensor::Sensor *s) { pm25_sensor_ = s; }
   void set_temperature_sensor(sensor::Sensor *s) { temperature_sensor_ = s; }
   void set_humidity_sensor(sensor::Sensor *s) { humidity_sensor_ = s; }
+  void set_filter_hours_sensor(sensor::Sensor *s) { filter_hours_sensor_ = s; }
   void set_power_switch(LR500Switch *s) { power_switch_ = s; }
   void set_uv_switch(LR500Switch *s) { uv_switch_ = s; }
   void set_sleep_switch(LR500Switch *s) { sleep_switch_ = s; }
   void set_auto_switch(LR500Switch *s) { auto_switch_ = s; }
   void set_buzzer_switch(LR500Switch *s) { buzzer_switch_ = s; }
+  void set_unit_switch(LR500Switch *s) { unit_switch_ = s; }
   void set_mute_switch(LR500MuteSwitch *s) { mute_switch_ = s; }
   void set_fan(LR500Fan *f) { fan_entity_ = f; }
 
@@ -117,11 +120,13 @@ class LR500 : public Component, public uart::UARTDevice {
   sensor::Sensor *pm25_sensor_{nullptr};
   sensor::Sensor *temperature_sensor_{nullptr};
   sensor::Sensor *humidity_sensor_{nullptr};
+  sensor::Sensor *filter_hours_sensor_{nullptr};
   LR500Switch *power_switch_{nullptr};
   LR500Switch *uv_switch_{nullptr};
   LR500Switch *sleep_switch_{nullptr};
   LR500Switch *auto_switch_{nullptr};
   LR500Switch *buzzer_switch_{nullptr};
+  LR500Switch *unit_switch_{nullptr};
   LR500MuteSwitch *mute_switch_{nullptr};
   LR500Fan *fan_entity_{nullptr};
 };

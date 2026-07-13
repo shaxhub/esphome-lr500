@@ -3,11 +3,13 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
 from esphome.const import (
+    DEVICE_CLASS_DURATION,
     DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_PM25,
     DEVICE_CLASS_TEMPERATURE,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
+    UNIT_HOUR,
     UNIT_MICROGRAMS_PER_CUBIC_METER,
     UNIT_PERCENT,
 )
@@ -34,6 +36,14 @@ TYPES = {
         unit_of_measurement=UNIT_PERCENT,
         accuracy_decimals=0,
         device_class=DEVICE_CLASS_HUMIDITY,
+        state_class=STATE_CLASS_MEASUREMENT,
+    )),
+    # Field 0x06 — reads a constant 4320 h (180 days) in captures so far; its
+    # tick-down behaviour is unconfirmed. Exposed read-only as an hours count.
+    "filter_hours": ("set_filter_hours_sensor", dict(
+        unit_of_measurement=UNIT_HOUR,
+        accuracy_decimals=0,
+        device_class=DEVICE_CLASS_DURATION,
         state_class=STATE_CLASS_MEASUREMENT,
     )),
 }

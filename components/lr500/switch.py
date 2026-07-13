@@ -17,6 +17,8 @@ TYPES = {
     "sleep":     ("set_sleep_switch",  0x0D),
     "auto_mode": ("set_auto_switch",   0x0A),
     "buzzer":    ("set_buzzer_switch", 0x0E),
+    # Display unit: ON = °F (writes 1), OFF = °C (writes 0). Field 0x12.
+    "fahrenheit": ("set_unit_switch",  0x12),
 }
 
 # Mute is a diagnostic switch that gates the component's TX. Toggling ON stops

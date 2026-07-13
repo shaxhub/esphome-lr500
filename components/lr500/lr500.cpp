@@ -166,6 +166,9 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
       case fid::HUMIDITY:
         if (humidity_sensor_) humidity_sensor_->publish_state((float) val);
         break;
+      case fid::FILTER_HOURS:
+        if (filter_hours_sensor_) filter_hours_sensor_->publish_state((float) val);
+        break;
       case fid::POWER:
         have_power = true;
         power_on = (val != 0);
@@ -180,6 +183,10 @@ void LR500::handle_state_(const uint8_t *body, size_t len) {
         break;
       case fid::SLEEP:
         if (sleep_switch_) sleep_switch_->publish_state(val != 0);
+        break;
+      case fid::UNIT:
+        // 0 = °C, 1 = °F. The Fahrenheit switch is ON when the display is °F.
+        if (unit_switch_) unit_switch_->publish_state(val != 0);
         break;
       case fid::BUZZER:
         // PIC only treats value 1 as "buzzer enabled"; 0, 2, 0xA5, 0xFF
