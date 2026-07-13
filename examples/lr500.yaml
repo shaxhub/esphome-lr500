@@ -81,6 +81,15 @@ switch:
       icon: "mdi:microphone-off"
       entity_category: diagnostic
 
+button:
+  - platform: lr500
+    lr500_id: lr500_dev
+    # One-shot write to field 0x07 — the prime (unconfirmed) filterReset
+    # suspect. See docs/PROTOCOL.md quirk #7 for the test that confirms it.
+    filter_reset:
+      name: "LR500 Filter reset"
+      icon: "mdi:air-filter"
+
 fan:
   - platform: lr500
     lr500_id: lr500_dev

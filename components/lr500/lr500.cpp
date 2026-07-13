@@ -233,6 +233,12 @@ void LR500Switch::write_state(bool state) {
   this->publish_state(state);
 }
 
+void LR500Button::press_action() {
+  // send_field already no-ops when TX is muted; a button has no state to
+  // restore, so a dropped press is simply silent.
+  parent_->send_field(field_, value_, 1);
+}
+
 void LR500MuteSwitch::write_state(bool state) {
   // set_tx_muted republishes via mute_switch_, so no extra publish_state
   // call is needed here — and it short-circuits on no-op flips.

@@ -4,6 +4,7 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/button/button.h"
 #include "esphome/components/fan/fan.h"
 
 namespace esphome {
@@ -55,6 +56,21 @@ class LR500MuteSwitch : public switch_::Switch {
 
  protected:
   LR500 *parent_;
+};
+
+// A stateless one-shot: pressing it writes a fixed value to a field. Used for
+// fields that trigger an action rather than hold state — e.g. the suspected
+// filterReset on 0x07 (write any value, device acts, nothing to read back).
+class LR500Button : public button::Button {
+ public:
+  LR500Button(LR500 *parent, uint8_t field, uint8_t value)
+      : parent_(parent), field_(field), value_(value) {}
+  void press_action() override;
+
+ protected:
+  LR500 *parent_;
+  uint8_t field_;
+  uint8_t value_;
 };
 
 class LR500Fan : public fan::Fan {
