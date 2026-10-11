@@ -16,10 +16,8 @@ LR500Button = lr500_ns.class_("LR500Button", button.Button)
 
 # yaml-key -> (field-id byte, value to write on press)
 #
-# filter_reset: field 0x07 is the prime `filterReset` suspect (see
-# docs/PROTOCOL.md quirk #7). It's still unconfirmed — a press beeps and, if
-# the hypothesis holds, resets the 0x06 filter-life counter to 4320. Any value
-# works; we send 1.
+# filter_reset: confirmed field 0x07 command; resets the 0x06 filter-life
+# counter to 4320 hours. See docs/PROTOCOL.md quirk #7. We send value 1.
 TYPES = {
     "filter_reset": (0x07, 0x01),
 }

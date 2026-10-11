@@ -2,6 +2,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch
+from esphome.const import CONF_RESTORE_MODE
 
 from . import CONF_LR500_ID, LR500, lr500_ns
 
@@ -26,15 +27,25 @@ TYPES = {
 # share the UART line without bus contention.
 MUTE_KEY = "tx_mute"
 
+# Appliance state comes from the PIC; never restore it by sending boot writes.
+APPLIANCE_SWITCH_SCHEMA = switch.switch_schema(
+    LR500Switch, block_inverted=True, default_restore_mode="DISABLED"
+).extend({
+    cv.Optional(CONF_RESTORE_MODE, default="DISABLED"): cv.enum(
+        {"DISABLED": switch.RESTORE_MODES["DISABLED"]}, upper=True, space="_"
+    ),
+})
+
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_LR500_ID): cv.use_id(LR500),
     # `block_inverted=True` refuses `inverted: true` on the YAML side.
     # The PIC's field semantics are physically fixed (POWER=1=on, BUZZER=1=on,
     # …), so an inverted switch would silently send wrong bytes to the device.
-    **{cv.Optional(key): switch.switch_schema(LR500Switch, block_inverted=True)
-       for key in TYPES},
+    **{cv.Optional(key): APPLIANCE_SWITCH_SCHEMA for key in TYPES},
     # tx_mute is a diagnostic; inverting it would just be confusing UX.
-    cv.Optional(MUTE_KEY): switch.switch_schema(LR500MuteSwitch, block_inverted=True),
+    cv.Optional(MUTE_KEY): switch.switch_schema(
+        LR500MuteSwitch, block_inverted=True, default_restore_mode="ALWAYS_OFF"
+    ),
 })
 
 

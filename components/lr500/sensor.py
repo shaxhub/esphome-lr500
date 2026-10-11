@@ -1,4 +1,4 @@
-"""Sensor platform — exposes the LR500's three sensor fields."""
+"""Sensor platform — exposes measurements and filter life remaining."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor

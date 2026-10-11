@@ -39,6 +39,12 @@ uart:
 lr500:
   id: lr500_dev
   uart_id: lr500_uart
+  communication_timeout: 10s
+
+binary_sensor:
+  - platform: lr500
+    lr500_id: lr500_dev
+    name: "LR500 PIC communication"
 
 sensor:
   - platform: lr500
@@ -80,12 +86,12 @@ switch:
       name: "LR500 UART mute"
       icon: "mdi:microphone-off"
       entity_category: diagnostic
+      restore_mode: ALWAYS_OFF
 
 button:
   - platform: lr500
     lr500_id: lr500_dev
-    # One-shot write to field 0x07 — the prime (unconfirmed) filterReset
-    # suspect. See docs/PROTOCOL.md quirk #7 for the test that confirms it.
+    # Confirmed field 0x07 command: resets filter life remaining to 4320 h.
     filter_reset:
       name: "LR500 Filter reset"
       icon: "mdi:air-filter"

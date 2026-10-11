@@ -139,8 +139,8 @@ keep heartbeating if you want a heartbeat-rate refresh of the sensor values.
 | 0x02 | 2 B | PM2.5 × 10 (µg/m³) | — | sensor; e.g. `0x0049 = 73 → 7.3 µg/m³` |
 | 0x03 | 2 B | temperature × 256 (°C) | — | sensor; e.g. `0x1800 → 24.0 °C` |
 | 0x04 | 1 B | humidity % | — | sensor |
-| 0x06 | 2 B | **filter life remaining (hours)** | — | Full value `4320` (= 180 days × 24 h, a standard HEPA filter lifetime). Confirmed a live countdown, not a constant: a partly-used unit read `3342` and resetting the filter jumped it straight back to `4320`. Ticks down toward 0 as the filter is used. The 0x06 value itself is read-only; the *reset* is a separate write (the app's `filterReset` function) whose UART field ID is **not yet identified** — see quirk #7. |
-| 0x07 | 1 B | beeps on write — **likely `filterReset`** (unconfirmed) | yes | Writing *any* value produces one beep and leaves no visible change in the state report — first read as a bare "command-received" tone. But this is a confound: 0x06 (filter life) sat at its full `4320` in **every** capture, so a filter-reset write would look identical — one beep, and 0x06 `4320 → 4320` = nothing observable. The app exposes exactly one `buzzer` function (already 0x0E) and one **unmapped** `filterReset`, making 0x07 the prime suspect. Decisive test in quirk #7. |
+| 0x06 | 2 B | **filter life remaining (hours)** | — | Full value `4320` (= 180 days × 24 h). Confirmed live countdown: a partly-used unit read `3342` and resetting the filter returned it to `4320`. Ticks down as the filter is used. Read-only; reset via field `0x07` — see quirk #7. |
+| **0x07** | 1 B | **filter reset** (`filterReset`) | yes | Confirmed reset command: restores field `0x06` to `4320` hours and produces a beep. The component writes value `1`; the result is visible in the next state report's filter-life counter. |
 | **0x08** | 1 B | **power** (`0`/`1`) | yes | |
 | **0x09** | 1 B | **fan speed**: `1`–`4` = speeds, `5` = turbo | yes | reads back as `1` while in auto mode |
 | **0x0A** | 1 B | **auto-mode flag** | yes | writing **any non-zero value** triggers auto |
@@ -162,7 +162,10 @@ length byte to recover from a guess.
 2. **Auto-mode lockout.** Once `field 0x0A = 1`, most field writes are silently
    ignored. Exit by writing a non-`1` value to field `0x09` (e.g.
    `aa 02 09 02` to switch to manual fan speed 2), or pressing the device's
-   physical mode button.
+   physical mode button. For manual speed 1, the component writes speed 2
+   followed immediately by speed 1 when auto is reported active or unknown.
+   This implements the escape sequence, but the PIC's timing requirements
+   for the second write still need hardware verification.
 3. **Heartbeat is optional but recommended.** The PIC accepts writes
    indefinitely without it. What it does is solicit a state report — silent
    neighbour means event-driven state pushes only.
@@ -172,27 +175,14 @@ length byte to recover from a guess.
 5. **Buzzer fields.** `0x0E` is the persistent buzzer enable — value `1` keeps
    key tones on, anything else silences. `0x0E`'s state report echoes the
    literal written byte, so a read of `0x0E = 0x02` still means "buzzer off."
-   `0x07` also beeps on write but has no persistent state of its own; despite
-   the beep it is probably **not** a second buzzer field (see quirk #7).
+   `0x07` also beeps on write, but it is the filter-reset command, not a
+   second buzzer control (see quirk #7).
 6. **Multi-byte values are big-endian.**
-7. **Filter reset — prime suspect is `0x07`.** Field `0x06` (filter life
-   remaining) is confirmed resettable: resetting the filter snaps it back to
-   `4320`. The FreshHome app exposes this as a `filterReset` cloud function,
-   but the UART field the stock module translated it into was never pinned
-   down. It is **not** any of the identified writable fields
-   (`0x08/09/0A/0B/0D/0E/0x12`), so none of the writes this component sends can
-   trigger it. The strongest candidate is `0x07`: it beeps on write with no
-   *visible* state change, but every capture had 0x06 already at `4320`, so a
-   reset would have been invisible — and the app has exactly one buzzer (0x0E)
-   and one unmapped `filterReset` to spare.
-
-   **Decisive test:** after a filter reset, run the unit until 0x06 has ticked
-   below `4320` (it decrements ~1 per operating hour, so ~1 h is enough), then
-   write any value to `0x07` and watch the next state report. If 0x06 snaps
-   back to `4320`, 0x07 **is** `filterReset`; if it only beeps and 0x06 holds,
-   0x07 is a genuine ack-tone and the reset lives on some other unprobed ID
-   (`scripts/lr500_probe_fields.py`). Note: the filter was just reset to
-   `4320`, so this test has to wait for the counter to draw down first.
+7. **Filter reset is confirmed as `0x07`.** Writing value `1` to this field
+   resets field `0x06` (filter life remaining) to `4320` hours. The component's
+   optional `filter_reset` button sends `aa 02 07 01 00 0a ee`. Confirmation
+   comes from the next state report's `0x06` value. This behavior has been
+   verified on hardware.
 
 ## Reference Python implementation
 
@@ -221,10 +211,11 @@ def parse_state(f: bytes) -> dict[int, int] | None:
         i += 1 + w
     return out
 
-HEARTBEAT = frame([0x14, 0x00, 0x00])    # must be sent ~1 Hz
+HEARTBEAT = frame([0x14, 0x00, 0x00])    # send ~1 Hz for periodic state reports
 
 power_on   = frame([0x08, 0x01])
 fan_speed3 = frame([0x09, 0x03])
 uv_on      = frame([0x0B, 0x01])
 enter_auto = frame([0x0A, 0x01])
+filter_reset = frame([0x07, 0x01])
 ```
