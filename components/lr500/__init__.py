@@ -2,7 +2,8 @@
 
 Declares the parent `lr500` component, which speaks the device's internal
 UART protocol (9600 8N1, framed 0xAA … 0xEE). Concrete entities (sensors,
-switches, fan) are wired in by the platform plugins in this same folder.
+switches, fan, buttons, and communication diagnostic) are wired in by the
+platform plugins in this same folder.
 """
 import esphome.codegen as cg
 import esphome.config_validation as cv

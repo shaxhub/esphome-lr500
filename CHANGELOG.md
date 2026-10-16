@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Contributor setup and local validation instructions, plus a manual release
+  checklist covering the platform migration and remaining hardware checks.
 - Optional filter-life sensor, buzzer and Fahrenheit switches, and filter-reset
   button using the confirmed `0x07` command to reset the counter to 4320 hours.
 - Optional PIC communication binary sensor and configurable `communication_timeout`
@@ -16,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - UART schema validation for 9600 8N1 with both TX and RX pins.
 
 ### Changed
+- The example declares ESPHome 2026.5.1 as its minimum version and explicitly
+  follows `main`; installation instructions explain pinning a compatible tag or
+  commit and use an isolated Python environment.
+- The example explicitly requires WPA2 for WiFi rather than relying on an
+  ESPHome default that changes between versions.
 - Entities use explicit sensor, switch, fan, button, and binary-sensor platforms;
   the bare `lr500` parent no longer creates entities. See the README migration notes.
 - Appliance-backed switches accept only `restore_mode: DISABLED`; state is read
@@ -23,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Document ESPHome 2026.5.1 as the supported baseline.
 
 ### Fixed
+- Protocol reference parser rejects invalid lengths, checksums, empty reports,
+  and truncated fields instead of returning partial state.
+- Correct auto-mode write and serial-logging descriptions; avoid assuming that
+  every hardware revision accepts 3.3 V on the PIC's RX input.
 - Optional platforms no longer cause references to missing entity headers.
 - UART recovery processes buffered candidates without discarding trailing frames,
   resynchronizes after checksum/end-marker failures, and expires partial frames

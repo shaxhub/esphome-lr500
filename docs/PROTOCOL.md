@@ -39,13 +39,12 @@ replacement.
 **UART signal levels:** The 5 V VCC pin powers the original daughterboard,
 which down-regulates to 3.3 V locally — so the VCC pin tells you nothing
 about the UART signal voltage. Measure the PIC's TX pin directly with a
-multimeter while traffic flows; the idle "high" reading is the signal
-voltage. In most observed units it's **3.3 V** (the PIC runs on a 3.3 V
-rail) and you can connect a 3.3 V UART adapter / ESP directly. If you
+multimeter at idle; a reading during traffic can average below the actual
+logic-high voltage. A **3.3 V** signal can connect to the ESP's RX directly. If you
 measure 5 V, drop the line to 3.3 V with a divider (e.g. 10 kΩ + 20 kΩ)
 or a level shifter on the PIC-TX → ESP-RX direction. The opposite
-direction (ESP-TX → PIC-RX at 3.3 V) is always safe because that exceeds
-the PIC's ~2 V logic-high threshold.
+direction also needs checking: verify that the PIC's RX input accepts the
+ESP's 3.3 V logic-high signal, and level-shift if your hardware requires it.
 
 ## Frame format
 
@@ -143,7 +142,7 @@ keep heartbeating if you want a heartbeat-rate refresh of the sensor values.
 | **0x07** | 1 B | **filter reset** (`filterReset`) | yes | Confirmed reset command: restores field `0x06` to `4320` hours and produces a beep. The component writes value `1`; the result is visible in the next state report's filter-life counter. |
 | **0x08** | 1 B | **power** (`0`/`1`) | yes | |
 | **0x09** | 1 B | **fan speed**: `1`–`4` = speeds, `5` = turbo | yes | reads back as `1` while in auto mode |
-| **0x0A** | 1 B | **auto-mode flag** | yes | writing **any non-zero value** triggers auto |
+| **0x0A** | 1 B | **auto-mode flag** | yes | addressing this field triggers auto regardless of the value; use fan speed 2–5 to exit |
 | **0x0B** | 1 B | **UV lamp** (`0`/`1`) | yes | |
 | **0x0D** | 1 B | **sleep mode** (`0`/`1`) | yes | |
 | **0x0E** | 1 B | **buzzer / key-tone enable** | yes | only value `1` enables the buzzer; any other value (`0`, `2`, `0xA5`, `0xFF`, …) silences it. State report echoes the literal byte you wrote — so the field is reported but the *behaviour* is binary. |
@@ -169,9 +168,9 @@ length byte to recover from a guess.
 3. **Heartbeat is optional but recommended.** The PIC accepts writes
    indefinitely without it. What it does is solicit a state report — silent
    neighbour means event-driven state pushes only.
-4. **Auto-flag writes ignore the value byte.** `aa 03 0a XX YY` always triggers
-   auto regardless of `XX`/`YY`. The PIC only checks "is this addressing
-   field 0x0a?"
+4. **Auto-flag writes ignore the value byte.** Even writing `0` to `0x0A`
+   enters auto. The component sends the normal one-byte value frame
+   (`aa 02 0a 01 00 0d ee`); to turn auto off it writes fan speed 2 instead.
 5. **Buzzer fields.** `0x0E` is the persistent buzzer enable — value `1` keeps
    key tones on, anything else silences. `0x0E`'s state report echoes the
    literal written byte, so a read of `0x0E = 0x02` still means "buzzer off."
@@ -189,24 +188,34 @@ length byte to recover from a guess.
 ```python
 WIDE_IDS = {0x01, 0x02, 0x03, 0x06, 0x20}
 
-def frame(payload: bytes) -> bytes:
+def frame(payload: bytes | list[int]) -> bytes:
     """Wrap a payload in the AA … EE envelope with checksum."""
+    payload = bytes(payload)
     L = len(payload)
+    if L > 255:
+        raise ValueError("Payload exceeds the one-byte length field")
     c = (L + sum(payload)) & 0xFFFF
-    return bytes([0xAA, L]) + bytes(payload) + bytes([c >> 8, c & 0xFF, 0xEE])
+    return bytes([0xAA, L]) + payload + bytes([c >> 8, c & 0xFF, 0xEE])
 
 def parse_state(f: bytes) -> dict[int, int] | None:
     """Decode an `aa .. a0 .. ee` state report into {field_id: value}."""
-    if len(f) < 5 or f[0] != 0xAA or f[-1] != 0xEE or f[2] != 0xA0:
+    if len(f) < 6 or f[0] != 0xAA or f[-1] != 0xEE or f[2] != 0xA0:
         return None
     L = f[1]
+    if L < 1 or len(f) != L + 5:
+        return None
+    checksum = (L + sum(f[2 : 2 + L])) & 0xFFFF
+    if int.from_bytes(f[-3:-1], "big") != checksum:
+        return None
     body = f[3 : 2 + L]
+    if not body:
+        return None
     out, i = {}, 0
     while i < len(body):
         fid = body[i]
         w = 2 if fid in WIDE_IDS else 1
         if i + 1 + w > len(body):
-            break
+            return None
         out[fid] = int.from_bytes(body[i + 1 : i + 1 + w], "big")
         i += 1 + w
     return out

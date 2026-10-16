@@ -1,22 +1,25 @@
 # esphome-lr500
 
-Local Home Assistant control for the **Beurer LR500 air purifier**, bypassing
-its broken cloud entirely.
+Local Home Assistant control for the **Beurer LR500 air purifier**, without
+the FreshHome cloud.
 
 This is an [ESPHome](https://esphome.io/) external component that replaces
 the device's stock Realtek RTL8710BX WiFi module with an ESP8266 (or ESP32)
 running firmware *you* control. The ESP speaks the LR500's internal UART
-protocol directly to its appliance MCU (a PIC16F1936) and exposes everything
-as native Home Assistant entities.
+protocol directly to its appliance MCU (a PIC16F1936) and exposes its sensors
+and controls as native Home Assistant entities.
+
+The supported baseline is **ESPHome 2026.5.1 on an ESP8266 D1 mini**.
+ESP32 support has not been verified. The configuration on `main` includes
+unreleased changes; see [upgrading](#upgrading-from-a-pre-platform-plugin-config)
+and the [changelog](CHANGELOG.md) before updating an existing installation.
 
 ## Why?
 
-Beurer's FreshHome backend is, as of mid-2026, **broken for new pairings**.
-The mobile app gets a `401 Basic realm="freshhome-cms"` on
-`/api/users/list` for every normal user account — the user-facing API route
-is misconfigured to require a CMS/admin role that ordinary tokens don't have.
-Both the official app and any reimplementation hit the same wall, so no
-amount of clever auth or BLE provisioning will make the cloud actually work.
+During the original investigation, new FreshHome pairings failed with
+`401 Basic realm="freshhome-cms"` on `/api/users/list`, including through the
+official app. This project grew out of that failure and keeps control local,
+independent of the app and backend's availability.
 
 The good news: the LR500's internals are wide open once you remove the
 WiFi module. The appliance MCU listens on a plain UART with no
@@ -58,9 +61,8 @@ You need:
   Different hardware revisions may exist — if your PCB looks materially
   different, please [open an issue](../../issues) with photos before
   proceeding.
-- An **ESP8266** dev board (Wemos D1 mini is cheapest, ~$3). An ESP32 *should*
-  work with the same code (swap the `esp8266:` block in YAML for `esp32:`),
-  but it's currently untested.
+- An **ESP8266 Wemos D1 mini**. ESP32 boards require a board-specific
+  configuration and remain unverified.
 - 4 short jumper wires.
 - A multimeter (just for one signal-level check during install — see below).
 
@@ -81,15 +83,16 @@ header instead. The `TX`/`RX` labels on the header are from the
 
 > **Verify the UART signal level before connecting the data lines.** The
 > header's VCC is 5 V, but the stock RTL8710BX is a 3.3 V part, so the
-> daughterboard handles the conversion. The PIC's TX line going into that
-> daughterboard could be either 3.3 V or 5 V depending on the design.
-> Probe the PIC's TX pad with a multimeter while traffic flows — the idle
-> "high" level should read close to the signal voltage.
-> - **~3.3 V** → wire ESP RX directly; you're done.
+> supply voltage alone does not establish the UART signal voltage. The PIC's
+> TX line could be either 3.3 V or 5 V depending on the design.
+> Measure the PIC's TX line at idle; a multimeter reading during traffic can
+> average below the actual logic-high voltage.
+> - **~3.3 V** → wire ESP RX directly.
 > - **~5 V** → put a voltage divider on the PIC-TX → ESP-RX line (e.g.
 >   10 kΩ + 20 kΩ → 3.3 V) or use a level shifter (BSS138, TXS0108E).
->   ESP-TX → PIC-RX is always fine: 3.3 V comfortably exceeds the PIC's
->   ~2 V logic-high threshold.
+>
+> Also verify that the PIC's RX input accepts a 3.3 V logic-high signal;
+> use level shifting in that direction if your hardware revision requires it.
 
 > **If entities show `Unknown` and never update**, you most likely have TX/RX
 > swapped. The ESP will send heartbeats but never receive a state report.
@@ -98,24 +101,32 @@ header instead. The `TX`/`RX` labels on the header are from the
 
 ## Installation
 
-1. Install ESPHome on your machine if you don't already have it:
+1. Install the supported ESPHome version in a virtual environment, or use an
+   existing installation of that version:
    ```bash
-   pip install esphome==2026.5.1
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python -m pip install esphome==2026.5.1
    ```
 2. Copy [`examples/lr500.yaml`](examples/lr500.yaml) into your ESPHome
    config directory (the same place you keep other device YAMLs).
 3. Copy [`examples/secrets.yaml.example`](examples/secrets.yaml.example) to
-   `secrets.yaml` next to it, and fill in WiFi credentials, OTA password,
-   and a freshly generated API key:
+   `secrets.yaml` next to it, and fill in WiFi credentials, fallback access-point
+   password, OTA password, and a freshly generated API key:
    ```bash
    openssl rand -base64 32        # paste into api_key
    ```
-4. Plug your D1 mini into USB and flash:
+4. The example follows the development branch (`@main`). To keep an installation
+   on a particular revision, replace `main` in `external_components.source` with
+   a release tag or full commit SHA. Choose a revision that supports the entity
+   platforms below; the original `v0.1.0` tag uses the older configuration.
+5. Plug your D1 mini into USB, validate the configuration, and flash:
    ```bash
+   esphome config lr500.yaml
    esphome run lr500.yaml
    ```
    First build compiles ~5 minutes. Subsequent updates go OTA.
-5. When the ESP joins your network, Home Assistant auto-discovers it.
+6. When the ESP joins your network, Home Assistant auto-discovers it.
    In **Settings → Devices & Services** an *ESPHome: LR500* card appears —
    click *Configure*, paste in the API key from `secrets.yaml`, and you're
    done.
@@ -124,7 +135,7 @@ header instead. The `TX`/`RX` labels on the header are from the
 
 ```yaml
 external_components:
-  - source: github://shaxhub/esphome-lr500
+  - source: github://shaxhub/esphome-lr500@main
     components: [lr500]
 
 uart:
@@ -207,7 +218,8 @@ The optional `filter_reset` button sends the confirmed `0x07` command to reset
 filter life remaining to 4320 hours; see
 [the protocol notes](docs/PROTOCOL.md#behavioural-notes--quirks).
 
-ESPHome 2026.5.1 is the supported baseline for these changes.
+ESPHome 2026.5.1 is the supported baseline for these changes. Compatibility
+with other versions has not been established.
 
 Note that `power:` is intentionally omitted above — the `fan.lr500_fan`
 entity's own on/off toggle already drives power. Re-add `power: { name: …}`
@@ -235,13 +247,14 @@ longer auto-loaded from the bare `lr500:` block.
   `filter_reset`; it resets the counter to 4320 hours.
 - **"Sleep" while powered off.** The PIC reports sleep mode for a few
   seconds after a power-off, then resets it. Don't be alarmed by the flicker.
-- **OTA over the boot UART.** The example YAML sets `logger: baud_rate: 0`
-  so the hardware UART isn't competing with our software-serial link.
-  All logs are over WiFi from then on; if the ESP is unreachable, recover
-  via USB reflash.
+- **Serial logging is disabled.** The example sets `logger: baud_rate: 0`;
+  ESPHome logs are available over WiFi. If the ESP is unreachable, recovery
+  may require a USB reflash.
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local validation and
+[the release checklist](docs/RELEASING.md) for release preparation.
 Issues and PRs welcome — especially:
 
 - Verifying auto → manual speed 1 with consecutive speed 2 / speed 1 writes.
@@ -255,12 +268,16 @@ Issues and PRs welcome — especially:
 - `examples/secrets.yaml.example` — template for the secrets file
 - `docs/PROTOCOL.md` — full reverse-engineered protocol writeup
 - `CHANGELOG.md` — release notes
+- `CONTRIBUTING.md` — development setup and validation
+- `docs/RELEASING.md` — release checklist and hardware verification gaps
 
 ## License
 
 [MIT](LICENSE).
 
 ## Credits
+
+AI tools were used to assist with development, code review, and documentation.
 
 Protocol reverse-engineering done from scratch in May 2026, working from a
 decompiled FreshHome APK, UART captures, and a lot of opcode fuzzing.
