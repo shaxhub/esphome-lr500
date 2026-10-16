@@ -6,8 +6,8 @@ stock WiFi module with an ESP8266 and talks to the appliance over UART.
 
 The working setup uses a **NodeMCU-style ESP8266 board**. The example targets
 a **D1 mini**, with ESPHome 2026.5.1 as the supported baseline. ESP32 hardware
-has not been verified. Changes on `main` are unreleased; see the
-[changelog](CHANGELOG.md) before upgrading.
+has not been verified. The current release is **v0.2.0**; see the
+[changelog](CHANGELOG.md) for release details.
 
 ## Features
 
@@ -76,8 +76,8 @@ voltage. Check signal levels before copying the setup; see the
 4. Add the discovered ESPHome device in Home Assistant and enter the API key
    from `secrets.yaml`. Subsequent firmware updates can use OTA.
 
-The example follows `main`. Pin a compatible tag or commit in
-`external_components.source` to keep a deployment on a fixed revision.
+The example pins `external_components.source` to `v0.2.0` so deployments use
+a fixed release. Use `@main` to follow development changes.
 
 ## YAML reference
 
@@ -87,7 +87,7 @@ additional entities. UART must be **9600 baud, 8N1**, with both TX and RX pins.
 
 ```yaml
 external_components:
-  - source: github://shaxhub/esphome-lr500@main
+  - source: github://shaxhub/esphome-lr500@v0.2.0
     components: [lr500]
 
 uart:

@@ -8,8 +8,8 @@ esp8266:
   board: d1_mini
 
 external_components:
-  # Development branch; pin a compatible release tag or commit for deployment.
-  - source: github://shaxhub/esphome-lr500@main
+  # Fixed release; use @main to follow development changes.
+  - source: github://shaxhub/esphome-lr500@v0.2.0
     components: [lr500]
 
 logger:

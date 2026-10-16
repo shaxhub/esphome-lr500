@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 - GitHub Actions firmware build matrix for the parent, each optional platform,
   README reference, and full example, using local component sources and dummy
@@ -25,9 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   move advanced entity and restore-mode notes into a configuration reference.
   Clarify that the working unit uses direct UART wiring with unmeasured signal
   voltage, and that the pin table follows the supplied YAML.
-- The example declares ESPHome 2026.5.1 as its minimum version and explicitly
-  follows `main`; installation instructions explain pinning a compatible tag or
-  commit and use an isolated Python environment.
+- The example declares ESPHome 2026.5.1 as its minimum version and pins the
+  component source to `v0.2.0`; installation instructions use an isolated
+  Python environment.
 - The example explicitly requires WPA2 for WiFi rather than relying on an
   ESPHome default that changes between versions.
 - Entities use explicit sensor, switch, fan, button, and binary-sensor platforms;
