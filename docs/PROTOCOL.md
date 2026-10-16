@@ -2,8 +2,8 @@
 
 This document describes the internal UART protocol used between the LR500's
 two MCUs. Reverse-engineered in May 2026 by reading the FreshHome Android
-APK, sniffing UART traffic, and fuzzing the PIC. See [README](../README.md)
-for the why.
+APK, sniffing UART traffic, and fuzzing the PIC. See the [README](../README.md)
+for installation and wiring.
 
 ## Architecture
 
@@ -38,11 +38,12 @@ replacement.
 
 **UART signal levels:** The 5 V VCC pin powers the original daughterboard,
 which down-regulates to 3.3 V locally — so the VCC pin tells you nothing
-about the UART signal voltage. Measure the PIC's TX pin directly with a
-multimeter at idle; a reading during traffic can average below the actual
-logic-high voltage. A **3.3 V** signal can connect to the ESP's RX directly. If you
-measure 5 V, drop the line to 3.3 V with a divider (e.g. 10 kΩ + 20 kΩ)
-or a level shifter on the PIC-TX → ESP-RX direction. The opposite
+about the UART signal voltage. Direct UART connections work on the installed
+unit, but its signal voltage has not been measured. Measure the PIC's TX pin
+with a multimeter at idle; a reading during traffic can average below the
+actual logic-high voltage. A **3.3 V** signal can connect to the ESP's RX
+directly. If you measure 5 V, drop the line to 3.3 V with a divider (e.g.
+10 kΩ + 20 kΩ) or a level shifter on the PIC-TX → ESP-RX direction. The opposite
 direction also needs checking: verify that the PIC's RX input accepts the
 ESP's 3.3 V logic-high signal, and level-shift if your hardware requires it.
 

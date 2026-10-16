@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - UART schema validation for 9600 8N1 with both TX and RX pins.
 
 ### Changed
+- Shorten the README around installation, wiring, and user-visible behavior;
+  move advanced entity and restore-mode notes into a configuration reference.
+  Clarify that the working unit uses direct UART wiring with unmeasured signal
+  voltage, and that the pin table follows the supplied YAML.
 - The example declares ESPHome 2026.5.1 as its minimum version and explicitly
   follows `main`; installation instructions explain pinning a compatible tag or
   commit and use an isolated Python environment.
