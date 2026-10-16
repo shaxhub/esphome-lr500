@@ -113,8 +113,9 @@ comes from the PIC.
 - **Auto mode:** the PIC can ignore controls while auto is active. Turning
   the auto switch OFF selects manual speed 2; writing `0` to the auto field
   would enter auto again. Manual speed 1 uses a speed 2 / speed 1 sequence
-  when auto is active or unknown. The PIC's timing requirements for that
-  sequence remain unverified. The next report corrects optimistic entity state.
+  when auto is active or unknown. Auto-to-speed-1 transitions have been tested
+  repeatedly on the installed unit and work reliably. The next report corrects
+  optimistic entity state.
 - **Sleep after power-off:** the PIC can briefly report sleep mode after
   powering down, then clear it.
 - **No readings:** check the YAML's GPIOs against the physical wiring, common

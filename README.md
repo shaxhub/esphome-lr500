@@ -119,7 +119,8 @@ communication timeouts, and switch restore behavior.
 
 - **Auto mode:** turning auto off selects manual speed 2. Speeds 2–5 exit auto
   directly. To request speed 1 from auto, the component sends speed 2 then
-  speed 1; that consecutive-write timing still needs hardware verification.
+  speed 1. This transition has been tested repeatedly on the installed unit
+  and works reliably.
 - **Lost communication:** by default, after 10 seconds without a valid report,
   the communication diagnostic turns off and sensor readings become unavailable.
   Switches and the fan retain their previous state.
@@ -131,18 +132,11 @@ and TX mute. More detail is in the
 [configuration notes](docs/CONFIGURATION.md#behavior-and-troubleshooting) and
 [protocol reference](docs/PROTOCOL.md).
 
-## Upgrading
-
-The original `v0.1.0` configuration created entities from the bare `lr500:`
-block. Current versions require explicit `sensor:`, `switch:`, `fan:`,
-`binary_sensor:`, or `button:` platform entries. Use the full example when
-migrating; the current YAML is not compatible with the old tag.
-
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local builds and CI, and
 [RELEASING.md](docs/RELEASING.md) for release checks. Hardware reports are welcome,
-especially for auto-to-speed-1 timing and ESP32 boards.
+especially for other board revisions and ESP32 boards.
 
 ## Credits and license
 

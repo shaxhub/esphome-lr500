@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   README reference, and full example, using local component sources and dummy
   credentials. The same generated configurations can be built locally.
 - Contributor setup and local validation instructions, plus a manual release
-  checklist covering the platform migration and remaining hardware checks.
+  checklist covering tagged releases and remaining hardware checks.
 - Optional filter-life sensor, buzzer and Fahrenheit switches, and filter-reset
   button using the confirmed `0x07` command to reset the counter to 4320 hours.
 - Optional PIC communication binary sensor and configurable `communication_timeout`
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The example explicitly requires WPA2 for WiFi rather than relying on an
   ESPHome default that changes between versions.
 - Entities use explicit sensor, switch, fan, button, and binary-sensor platforms;
-  the bare `lr500` parent no longer creates entities. See the README migration notes.
+  the bare `lr500` parent no longer creates entities.
 - Appliance-backed switches accept only `restore_mode: DISABLED`; state is read
   from the PIC. The local TX mute switch supports standard restore modes.
 - Document ESPHome 2026.5.1 as the supported baseline.
@@ -49,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   after a 100 ms idle interval. Truncated state fields are rejected before publication.
 - TX mute initializes and publishes before any UART write, including initial OFF.
 - Manual speed 1 requests use speed 2 as an auto-mode escape before writing speed 1
-  when the auto state is active or unknown. PIC timing still needs hardware verification.
+  when the auto state is active or unknown. Repeated hardware testing confirmed
+  reliable auto-to-speed-1 transitions on the installed unit without an added delay.
 - README, example, and protocol descriptions agree on confirmed filter-life and reset behavior.
 
 ## [0.1.0] - 2026-05-20

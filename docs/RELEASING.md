@@ -32,9 +32,15 @@ release-preparation pass, using ESPHome 2026.5.1 and an ESP8266 D1 mini target:
 - Relative documentation links and the documented local-source path checked
   successfully; `git diff --check` passed.
 
-No device was flashed or tested during this pass. These results cover local
-compilation; published-tag validation and the appliance checks below remain
-part of the release process.
+No device was flashed or tested during the local build-validation pass.
+These results cover local compilation; published-tag validation and the
+appliance checks below remain part of the release process.
+
+## Recorded hardware validation — 2026-10-16
+
+The maintainer repeatedly tested switching from auto to manual speed 1 on the
+installed LR500 with a NodeMCU-style ESP8266 board. The current consecutive
+speed 2 / speed 1 sequence worked reliably. No added delay was needed.
 
 ## Verify on an appliance
 
@@ -53,24 +59,21 @@ Record which checks were performed on the candidate revision:
   only when a filter reset is intended; the command changes the appliance's
   maintenance counter.
 
-Filter reset via `0x07` was previously confirmed on hardware. The consecutive
-auto-to-speed-1 timing and persistent mute across real power cycles remain
-unverified in this repository's recorded validation. ESP32 hardware is also
-unverified. Carry any unresolved limits into the release notes.
+Filter reset via `0x07` was previously confirmed on hardware, and auto-to-speed-1
+transitions are confirmed above. Persistent mute across real power cycles and
+ESP32 hardware remain unverified. Carry any unresolved limits into the release
+notes.
 
 ## Cut the release
 
 1. Choose the next pre-1.0 version under Semantic Versioning.
-   The changes since `v0.1.0` require a YAML migration: a bare `lr500:` parent
-   no longer creates entities. Call this out prominently in the release notes.
 2. Move `Unreleased` entries into a section for the chosen version and release
    date, and leave a new `Unreleased` section for future changes.
 3. Pin the README and example's GitHub component source to the intended release
-   tag. Verify that the tagged source will support the documented YAML; the
-   existing `v0.1.0` tag does not support the current platform configuration.
+   tag. Verify that the tagged source supports the documented YAML.
 4. Commit the reviewed release changes, create the matching `vX.Y.Z` tag at
-   that commit, and publish the release with migration notes, supported
-   ESPHome version, validation results, and remaining hardware limits.
+   that commit, and publish the release with the supported ESPHome version,
+   validation results, and remaining hardware limits.
 5. Verify the published tag's configuration in a fresh directory using the
    GitHub source, then compile it. This checks distribution as well as local
    compilation.

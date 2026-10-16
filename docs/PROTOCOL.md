@@ -164,8 +164,8 @@ length byte to recover from a guess.
    `aa 02 09 02` to switch to manual fan speed 2), or pressing the device's
    physical mode button. For manual speed 1, the component writes speed 2
    followed immediately by speed 1 when auto is reported active or unknown.
-   This implements the escape sequence, but the PIC's timing requirements
-   for the second write still need hardware verification.
+   Repeated hardware testing on the installed unit confirmed that this
+   sequence reliably exits auto and selects manual speed 1.
 3. **Heartbeat is optional but recommended.** The PIC accepts writes
    indefinitely without it. What it does is solicit a state report — silent
    neighbour means event-driven state pushes only.
