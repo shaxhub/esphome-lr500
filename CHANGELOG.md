@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Document ESPHome 2026.5.1 as the supported baseline.
 
 ### Fixed
+- Identify the working hardware as a NodeMCU-style ESP8266 board; distinguish
+  the D1 mini example's build target and power-pin label from the installed board.
 - Protocol reference parser rejects invalid lengths, checksums, empty reports,
   and truncated fields instead of returning partial state.
 - Correct auto-mode write and serial-logging descriptions; avoid assuming that

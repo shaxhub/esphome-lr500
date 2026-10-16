@@ -4,6 +4,7 @@ esphome:
   min_version: 2026.5.1
 
 esp8266:
+  # Example build target; select the board ID that matches your hardware.
   board: d1_mini
 
 external_components:

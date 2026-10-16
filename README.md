@@ -4,7 +4,8 @@ Local Home Assistant control for the **Beurer LR500 air purifier**, without
 the FreshHome cloud. This [ESPHome](https://esphome.io/) component replaces the
 stock WiFi module with an ESP8266 and talks to the appliance over UART.
 
-The working setup uses a **Wemos D1 mini and ESPHome 2026.5.1**. ESP32 hardware
+The working setup uses a **NodeMCU-style ESP8266 board**. The example targets
+a **D1 mini**, with ESPHome 2026.5.1 as the supported baseline. ESP32 hardware
 has not been verified. Changes on `main` are unreleased; see the
 [changelog](CHANGELOG.md) before upgrading.
 
@@ -23,10 +24,10 @@ All entities are optional. Readings normally update about once per second.
 ## Wiring
 
 Disconnect the stock WiFi module from the main board's four-pin **WIFI**
-header and connect the D1 mini in its place. This table matches
-[`examples/lr500.yaml`](examples/lr500.yaml):
+header and connect the ESP8266 board in its place. This table follows the
+**D1 mini example** in [`examples/lr500.yaml`](examples/lr500.yaml):
 
-| LR500 header label | D1 mini pin | Purpose |
+| LR500 header label | D1 mini example pin | Purpose |
 | --- | --- | --- |
 | `VCC` | `5V` | Power through the D1 mini's onboard regulator |
 | `GND` | `GND` | Common ground |
@@ -36,6 +37,9 @@ header and connect the D1 mini in its place. This table matches
 The header labels are from the original WiFi module's perspective. The example
 uses **D5 as ESP TX and D6 as ESP RX** through a software UART; match the wiring
 to your YAML's `tx_pin` and `rx_pin` settings.
+
+For a NodeMCU, follow the GPIO numbers and your specific board's pinout.
+The `5V` power-pin label above is specific to the D1 mini example.
 
 Direct UART wiring works on the installed unit, but **the signal voltage has
 not been measured**. The header's 5 V supply does not establish the UART signal
@@ -61,7 +65,9 @@ voltage. Check signal levels before copying the setup; see the
    openssl rand -base64 32
    ```
 
-3. Connect the D1 mini over USB and flash:
+   Set `esp8266.board` to match your board; the example uses `d1_mini`.
+
+3. Connect your ESP8266 board over USB and flash:
 
    ```bash
    esphome run lr500.yaml
