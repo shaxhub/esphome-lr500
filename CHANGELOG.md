@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- GitHub Actions firmware build matrix for the parent, each optional platform,
+  README reference, and full example, using local component sources and dummy
+  credentials. The same generated configurations can be built locally.
 - Contributor setup and local validation instructions, plus a manual release
   checklist covering the platform migration and remaining hardware checks.
 - Optional filter-life sensor, buzzer and Fahrenheit switches, and filter-reset

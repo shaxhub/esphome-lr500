@@ -12,7 +12,7 @@ From the repository root, use the supported ESPHome baseline:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install esphome==2026.5.1
+python -m pip install -r requirements-dev.txt
 ```
 
 Prepare an ignored working configuration:
@@ -73,9 +73,35 @@ settings (baud rate, data bits, parity, stop bits, or missing TX/RX pins) and
 appliance-switch restore modes other than `DISABLED` are rejected. Keep
 `USE_*` guards around all references to optional entity types.
 
-There is currently no automated test suite or CI workflow. Record the ESPHome
-version, configurations checked, and whether validation stopped at generation
-or included a complete firmware build in your PR.
+## Continuous integration
+
+[CI](https://github.com/shaxhub/esphome-lr500/actions/workflows/ci.yml) runs on
+pull requests, pushes to `main`, and manual dispatch. It fully compiles the
+eight ESP8266 configurations above using the ESPHome version pinned in
+`requirements-dev.txt`. Each job builds the local checkout with dummy
+credentials; no device secrets or firmware uploads are involved.
+
+Run the same configuration matrix locally:
+
+```bash
+python scripts/prepare_ci.py
+esphome compile .esphome/ci/*.yaml
+```
+
+Or prepare and compile one case:
+
+```bash
+python scripts/prepare_ci.py fan
+esphome compile .esphome/ci/fan.yaml
+```
+
+Generated configurations and builds stay under the ignored `.esphome/ci/`
+directory. Do not flash these dummy configurations to a device. Toolchain and
+Python package caches reduce repeat download time in CI.
+
+The workflow checks configuration validation, source generation, C++ compilation,
+and linking. There is no separate automated runtime test suite. Record any
+additional checks and hardware validation in your PR.
 
 ## Hardware reports
 

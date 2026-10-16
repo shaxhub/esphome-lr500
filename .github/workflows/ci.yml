@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firmware:
+    name: ESP8266 / ${{ matrix.config }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - parent
+          - sensor
+          - switch
+          - fan
+          - button
+          - binary_sensor
+          - readme
+          - example
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.platformio/packages
+            ~/.platformio/platforms
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-platformio-${{ hashFiles('requirements-dev.txt', 'examples/lr500.yaml') }}
+
+      - name: Install ESPHome
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Prepare local configuration
+        run: python scripts/prepare_ci.py "${{ matrix.config }}"
+
+      - name: Compile firmware
+        run: python -m esphome compile ".esphome/ci/${{ matrix.config }}.yaml"

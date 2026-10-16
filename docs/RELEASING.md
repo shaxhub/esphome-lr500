@@ -10,6 +10,7 @@ section until a release version and date have been selected.
 - Follow [CONTRIBUTING.md](../CONTRIBUTING.md) to validate the local checkout
   with ESPHome 2026.5.1. Generate and fully compile the optional-platform
   configurations, README reference, and full example. Record the results.
+- Confirm all eight CI builds pass on the release candidate commit.
 - Run `git diff --check` and check relative Markdown links.
 - Keep the README, example, protocol reference, and changelog consistent.
 - Check that no secrets, UART captures containing private data, generated
